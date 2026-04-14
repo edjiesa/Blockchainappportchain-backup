@@ -1,0 +1,19 @@
+{
+  "name": "fabric-backend-connector",
+  "version": "2.0.0",
+  "description": "Node.js API Middleware for Hyperledger Fabric + PostgreSQL off-chain",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "axios": "^1.6.5",
+    "fabric-network": "^2.2.19",
+    "fabric-ca-client": "^2.2.19",
+    "pg": "^8.11.3"
+  }
+}

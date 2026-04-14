@@ -19,4 +19,11 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+
+  // Buka host agar Docker Container bisa menyalurkan port ke Windows
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+    strictPort: true,
+  }
 })
