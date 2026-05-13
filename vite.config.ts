@@ -5,38 +5,33 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [
-    // The React and Tailwind plugins are both required for Make, even if
-    // Tailwind is not being actively used – do not remove them
+    // React dan Tailwind tetap dipertahankan sesuai kebutuhan sistem
     react(),
     tailwindcss(),
   ],
   resolve: {
     alias: {
-      // Alias @ to the src directory
+      // Alias @ diarahkan ke folder src untuk kemudahan import
       '@': path.resolve(__dirname, './src'),
     },
   },
 
-  // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
+  // Mendukung import file mentah (raw) seperti SVG dan CSV
   assetsInclude: ['**/*.svg', '**/*.csv'],
 
-  // Buka host agar Docker Container bisa menyalurkan port ke Windows
+  // Konfigurasi server agar tetap kompatibel dengan Docker/Windows
   server: {
     host: '0.0.0.0',
     port: 5173,
     strictPort: true,
-  }
-})
-// vite.config.js
-import { defineConfig } from 'vite'
+  },
 
-export default defineConfig({
+  // Optimasi Build: Memisahkan node_modules menjadi chunk 'vendor'
   build: {
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            // Memisahkan semua library pihak ketiga ke dalam satu chunk bernama 'vendor'
             return 'vendor';
           }
         },
