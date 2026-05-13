@@ -27,3 +27,20 @@ export default defineConfig({
     strictPort: true,
   }
 })
+// vite.config.js
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            // Memisahkan semua library pihak ketiga ke dalam satu chunk bernama 'vendor'
+            return 'vendor';
+          }
+        },
+      },
+    },
+  },
+})
