@@ -159,6 +159,40 @@ app.get('/api/ebl', async (req, res) => {
     }
 });
 
+// ─── BLOCKCHAIN EXPLORER ──────────────────────────────
+app.get('/api/explorer/stats', async (req, res) => {
+    try {
+        const blocks = await fabricConnector.getLatestBlocks(1);
+        let latestHeight = 0;
+        if (blocks && blocks.length > 0) {
+            latestHeight = blocks[0].block_number;
+        }
+        const { rows: txRows } = await pool.query('SELECT count(*) as total FROM audit_logs');
+        const { rows: validRows } = await pool.query("SELECT count(*) as total FROM audit_logs WHERE sync_status='synced'");
+        
+        res.json({
+            success: true,
+            data: {
+                total_transactions: parseInt(txRows[0].total) || 0,
+                valid_transactions: parseInt(validRows[0].total) || 0,
+                latest_block: latestHeight,
+                chaincodes: ['portchain-cc', 'customs-cc', 'ebl-cc']
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.get('/api/explorer/transactions', async (req, res) => {
+    try {
+        const blocks = await fabricConnector.getLatestBlocks(50);
+        res.json({ success: true, data: blocks });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // ─── AUDIT LOGS (PostgreSQL) ──────────────────────────
 app.get('/api/audit', async (req, res) => {
     try {

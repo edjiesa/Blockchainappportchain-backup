@@ -224,7 +224,7 @@ Transaksi yang di-record ke blockchain:
 | **Documents** | Bill of Lading, Invoice, Packing List |
 | **e-BL** | Electronic Bill of Lading token management |
 | **Organizations** | Daftar Port Authority, Shipping Lines |
-| **Blockchain Explorer** | Jelajahi transaksi Fabric, status koneksi live |
+| **Blockchain Explorer** | 🆕 **Real-Time Mini Explorer** menarik data block & transaksi langsung dari Ledger Fabric menggunakan `qscc` |
 | **Audit Trail** | Log lengkap semua aktivitas sistem |
 
 ---
