@@ -229,6 +229,41 @@ Sistem ini memuat **73 Fungsi Transaksi Blockchain** mutakhir yang diorganisir k
 
 ---
 
+## 🔍 Cara Mengecek Data & Blockchain Secara Detail
+
+Karena aplikasi ini menggunakan arsitektur *Hybrid* (Database Relasional + Blockchain Ledger), Anda memiliki beberapa opsi untuk memverifikasi data yang telah disubmit:
+
+### Opsi A: Cek Melalui Aplikasi Web (Frontend)
+1. Buka [http://localhost:5173/shipments](http://localhost:5173/shipments).
+2. Lihat daftar pengiriman yang baru saja dibuat. Jika muncul di tabel, itu berarti data sudah tersimpan di *database*.
+3. Perhatikan bagian **Dashboard**. Jika Anda men-submit shipment baru, angka "Total Shipments" dan "Total Transaksi" akan bertambah secara *real-time*.
+
+### Opsi B: Cek Melalui Database PostgreSQL (Off-Chain Data)
+Aplikasi ini menyimpan *state* operasional di PostgreSQL. Anda dapat melihat buktinya melalui CLI atau GUI Client (seperti DBeaver/pgAdmin).
+1. Buka terminal/PowerShell.
+2. Masuk ke dalam kontainer database:
+   ```bash
+   docker exec -it portchain-db psql -U portchain -d portchain_offchain
+   ```
+3. Lakukan query (pencarian) pada tabel:
+   ```sql
+   -- Cek data pengiriman:
+   SELECT shipment_id, shipment_code, exporter_name, shipment_status FROM shipments;
+   
+   -- Cek simulasi log blockchain (Transaction ID):
+   SELECT tx_id, transaction_type, validation_status FROM blockchain_transactions;
+   
+   -- (Ketik \q untuk keluar dari psql)
+   ```
+
+### Opsi C: Cek Blockchain Melalui Microfab Node Explorer (On-Chain)
+Aplikasi menjalankan node Fabric lokal bernama `microfab`. Anda dapat berinteraksi langsung dengan API node tersebut untuk melihat blok yang tercipta.
+1. Buka browser dan arahkan ke: **[http://localhost:8080/ak/api/v1/components](http://localhost:8080/ak/api/v1/components)**
+2. Anda akan melihat struktur topologi dari 3 Organisasi (Port, Customs, Bank) dan Orderer Nodes.
+3. Node Microfab juga memungkinkan *shell execution* untuk melakukan perintah CLI Fabric bawaan (seperti `peer chaincode query ...`) jika Anda ingin melangkah lebih jauh mengeksplorasi Ledger-nya secara mentah (Raw).
+
+---
+
 ## 🖥️ Fitur Aplikasi
 
 | Halaman | Fitur |
@@ -247,10 +282,10 @@ Sistem ini memuat **73 Fungsi Transaksi Blockchain** mutakhir yang diorganisir k
 ## 🧰 Tech Stack
 
 **Backend:**
-- Node.js 20 + Express 4
-- `fabric-network` v2.2 — Hyperledger Fabric SDK
-- `pg` v8 — PostgreSQL driver
-- `axios` — HTTP client untuk Microfab API
+- Go (Golang) 1.22
+- JSON-RPC Middleware (Standard Library `net/http`)
+- `lib/pq` — PostgreSQL driver untuk Go
+- Simulasi Ledger Level-Database
 
 **Frontend:**
 - React 18 + TypeScript
