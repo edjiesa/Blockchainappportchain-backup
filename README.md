@@ -154,38 +154,41 @@ Blockchainappportchain/
 
 ---
 
-## 🔌 REST API Endpoints
+## 🔌 API Endpoints (Go JSON-RPC)
 
-Base URL: `http://localhost:3001`
+Base URL: `http://localhost:3001/rpc`
 
-| Method | Endpoint | Keterangan |
-|--------|----------|-----------|
-| `GET` | `/api/status` | Status koneksi Fabric & PostgreSQL |
-| `GET` | `/api/shipments` | Daftar pengiriman (dari PostgreSQL) |
-| `POST` | `/api/shipments` | Buat pengiriman baru |
-| `GET` | `/api/customs` | Data bea cukai |
-| `PATCH` | `/api/customs/:id` | Update status bea cukai |
-| `GET` | `/api/documents` | Daftar dokumen |
-| `GET` | `/api/ebl` | Token Electronic Bill of Lading |
-| `GET` | `/api/organizations` | Daftar organisasi |
-| `GET` | `/api/audit` | Audit log |
-| `GET` | `/api/query` | Query langsung ke chaincode Fabric |
+Arsitektur baru menggunakan protokol **JSON-RPC** via HTTPS POST.
+Semua 73 Fungsi *Smart Contract* dapat dipanggil dengan method JSON-RPC yang sesuai, misalnya:
+- `"method": "CreateShipment"`
+- `"method": "UploadDocument"`
+- `"method": "RecordAuditLog"`
+
+*(Sistem ini telah dimigrasi dari REST Node.js menjadi Go JSON-RPC untuk menjamin performa tinggi dan kompatibilitas Enterprise).*
 
 ---
 
-## 🗄️ Database Schema (PostgreSQL Off-Chain)
+## 🗄️ Database Schema (14 Entitas PostgreSQL Off-Chain)
 
-```sql
--- Tabel utama off-chain:
-organizations       -- Port Authority, Customs, Shipping Lines
-users               -- Pengguna sistem
-shipments           -- Data pengiriman barang
-containers          -- Kontainer per shipment
-customs_clearance   -- Proses bea cukai (PIB)
-documents           -- Bill of Lading, Invoice, dll.
-ebl_tokens          -- Electronic Bill of Lading tokens
-audit_logs          -- Log audit setiap transaksi
-```
+Skema database telah diperbarui penuh mendukung **Enkripsi AES-256 (pgcrypto)** dan **pgAudit Simulation (Trigger)**.
+
+Terdapat **14 Entitas Inti**:
+1. `organizations`
+2. `users`
+3. `shipments`
+4. `containers`
+5. `documents`
+6. `document_files`
+7. `document_hashes`
+8. `blockchain_transactions`
+9. `audit_logs`
+10. `customs_clearance`
+11. `container_status_logs`
+12. `certificates`
+13. `ebl_tokens`
+14. `ebl_transfers`
+
+> 💡 *Silakan lihat file [ERD.md](ERD.md) di repositori ini untuk diagram visual relasi antar-entitasnya.*
 
 **Koneksi PostgreSQL:**
 ```
@@ -198,20 +201,31 @@ Password: portchain123
 
 ---
 
-## ⛓️ Blockchain (Hyperledger Fabric)
+## ⛓️ Blockchain (Hyperledger Fabric Multi-Org)
 
-- **Platform:** IBM Microfab (Hyperledger Fabric v2.0)
+- **Platform:** IBM Microfab (Dikonfigurasi kustom untuk simulasi Multi-Org)
 - **Channel:** `mychannel`
-- **Organisasi:** `org1`
-- **Chaincodes:** `portchain-cc`, `customs-cc`, `ebl-cc`
+- **Organisasi (3 Org):** `portorg` (Port Authority), `customsorg` (Customs), `bankorg` (Banking)
+- **Chaincode:** `portchain-cc` (Monolithic Smart Contract)
 - **Consensus:** Raft
 
-Transaksi yang di-record ke blockchain:
-- ✅ Pembuatan Shipment (`CreateShipment`)
-- ✅ Update Status Bea Cukai (`UpdateCustomsStatus`)
-- ✅ Transfer Electronic BL (`TransferEBL`)
-- ✅ Upload Dokumen (`UploadDocument`)
-- ✅ Tambah Kontainer (`CreateContainer`)
+### 🚀 73 Fungsi Smart Contract
+Sistem ini memuat **73 Fungsi Transaksi Blockchain** mutakhir yang diorganisir ke dalam 15 Kategori:
+1. **Organization & User** (9 Fungsi)
+2. **Shipment** (6 Fungsi)
+3. **Container** (5 Fungsi)
+4. **Document** (5 Fungsi)
+5. **Document File & Hash** (6 Fungsi - Immutability)
+6. **Customs Clearance** (6 Fungsi)
+7. **Certificate** (5 Fungsi)
+8. **Container Status Log** (3 Fungsi)
+9. **Audit Log** (4 Fungsi - Core)
+10. **Blockchain Transaction** (4 Fungsi)
+11. **EBL Token** (5 Fungsi)
+12. **EBL Transfer** (2 Fungsi)
+13. **Integration (Off-Chain On-Chain)** (4 Fungsi)
+14. **Verification (End-to-End)** (5 Fungsi)
+15. **Access Control** (4 Fungsi)
 
 ---
 
