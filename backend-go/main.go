@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	_ "github.com/lib/pq"
 	"github.com/lib/pq"
 )
 
@@ -127,6 +126,12 @@ func rpcHandler(w http.ResponseWriter, r *http.Request) {
 		result, errObj = handleRegisterUser(req.Params)
 	case "GetUsers":
 		result, errObj = handleGetUsers()
+	case "GetCustomsClearances":
+		result, errObj = handleGetCustomsClearances()
+	case "SubmitCustomsClearance":
+		result, errObj = handleSubmitCustomsClearance(req.Params)
+	case "UpdateCustomsStatus":
+		result, errObj = handleUpdateCustomsStatus(req.Params)
 	default:
 		errObj = map[string]string{"code": "-32601", "message": "Method not found"}
 	}
@@ -215,6 +220,105 @@ func handleGetUsers() (interface{}, interface{}) {
 		users = []map[string]interface{}{}
 	}
 	return users, nil
+}
+
+func handleGetCustomsClearances() (interface{}, interface{}) {
+	rows, err := db.Query(`
+		SELECT customs_clearance_id, shipment_id, pib_number, customs_status, customs_lane, decided_at, blockchain_tx_id, created_at
+		FROM customs_clearance ORDER BY created_at DESC
+	`)
+	if err != nil {
+		log.Printf("Query Error: %v", err)
+		return nil, map[string]string{"code": "-32002", "message": "Database error"}
+	}
+	defer rows.Close()
+
+	var clearances []map[string]interface{}
+	for rows.Next() {
+		var (
+			cID, sID, pib, status, lane, txID string
+			decidedAt                         sql.NullTime
+			createdAt                         time.Time
+		)
+		if err := rows.Scan(&cID, &sID, &pib, &status, &lane, &decidedAt, &txID, &createdAt); err == nil {
+			item := map[string]interface{}{
+				"customs_clearance_id": cID,
+				"shipment_id":          sID,
+				"pib_number":           pib,
+				"customs_status":       status,
+				"customs_lane":         lane,
+				"blockchain_tx_id":     txID,
+				"created_at":           createdAt,
+			}
+			if decidedAt.Valid {
+				item["decided_at"] = decidedAt.Time
+			} else {
+				item["decided_at"] = nil
+			}
+			clearances = append(clearances, item)
+		}
+	}
+	if clearances == nil {
+		clearances = []map[string]interface{}{}
+	}
+	return clearances, nil
+}
+
+func handleSubmitCustomsClearance(params json.RawMessage) (interface{}, interface{}) {
+	var input struct {
+		ShipmentID string `json:"shipment_id"`
+		PibNumber  string `json:"pib_number"`
+	}
+	if err := json.Unmarshal(params, &input); err != nil {
+		return nil, map[string]string{"code": "-32602", "message": "Invalid params"}
+	}
+
+	cID := "cc-" + uuid.New().String()[:8]
+	txID := uuid.New().String()
+
+	_, err := db.Exec(`
+		INSERT INTO customs_clearance (customs_clearance_id, shipment_id, pib_number, customs_status, customs_lane, blockchain_tx_id)
+		VALUES ($1, $2, $3, 'pending', 'YELLOW', $4)
+	`, cID, input.ShipmentID, input.PibNumber, txID)
+	if err != nil {
+		log.Printf("DB Insert Error: %v", err)
+		return nil, map[string]string{"code": "-32001", "message": "Failed to insert into database"}
+	}
+
+	db.Exec(`
+		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
+		VALUES ($1, $2, 'port-channel', 'customs-cc', 'SubmitCustomsClearance', 'VALID')
+	`, txID, uuid.New().String())
+
+	return map[string]interface{}{"success": true, "message": "Customs Clearance Submitted", "customs_clearance_id": cID}, nil
+}
+
+func handleUpdateCustomsStatus(params json.RawMessage) (interface{}, interface{}) {
+	var input struct {
+		CustomsClearanceID string `json:"customs_clearance_id"`
+		Status             string `json:"status"` // 'approved' or 'rejected'
+	}
+	if err := json.Unmarshal(params, &input); err != nil {
+		return nil, map[string]string{"code": "-32602", "message": "Invalid params"}
+	}
+
+	newTxID := uuid.New().String()
+	_, err := db.Exec(`
+		UPDATE customs_clearance 
+		SET customs_status = $1, decided_at = NOW(), blockchain_tx_id = $2
+		WHERE customs_clearance_id = $3
+	`, input.Status, newTxID, input.CustomsClearanceID)
+	if err != nil {
+		log.Printf("DB Update Error: %v", err)
+		return nil, map[string]string{"code": "-32001", "message": "Failed to update database"}
+	}
+
+	db.Exec(`
+		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
+		VALUES ($1, $2, 'port-channel', 'customs-cc', 'UpdateCustomsStatus', 'VALID')
+	`, newTxID, uuid.New().String())
+
+	return map[string]interface{}{"success": true, "message": "Status updated successfully"}, nil
 }
 
 

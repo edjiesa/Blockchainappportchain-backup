@@ -1,13 +1,48 @@
-import { useState } from 'react';
-import { Search, Shield, CheckCircle, XCircle, Clock, Eye } from 'lucide-react';
-import { mockCustomsClearance, mockShipments } from '../data/portData';
+import { useState, useEffect } from 'react';
+import { Search, Shield, CheckCircle, XCircle, Clock, Eye, Plus, X } from 'lucide-react';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export function CustomsClearance() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [shipments, setShipments] = useState<any[]>([]);
+  const [customsClearances, setCustomsClearances] = useState<any[]>([]);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredClearances = mockCustomsClearance.filter(clearance => {
-    const shipment = mockShipments.find(s => s.shipment_id === clearance.shipment_id);
+  const fetchData = async () => {
+    try {
+      // Fetch Shipments
+      const shipRes = await fetch(`${API_URL}/rpc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'GetAllShipments', params: {}, id: Date.now() })
+      });
+      const shipData = await shipRes.json();
+      if (shipData.result) setShipments(shipData.result);
+
+      // Fetch Clearances
+      const clearRes = await fetch(`${API_URL}/rpc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'GetCustomsClearances', params: {}, id: Date.now() })
+      });
+      const clearData = await clearRes.json();
+      if (clearData.result) setCustomsClearances(clearData.result);
+    } catch (err) {
+      console.error("Failed to fetch data", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const filteredClearances = customsClearances.filter(clearance => {
+    const shipment = shipments.find(s => s.shipment_id === clearance.shipment_id);
     const matchesSearch = 
       clearance.pib_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       shipment?.shipment_code.toLowerCase().includes(searchTerm.toLowerCase());
@@ -17,26 +52,75 @@ export function CustomsClearance() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleApprove = (clearanceId: string) => {
-    alert(`Customs clearance ${clearanceId} akan di-approve!\n\nProses:\n1. Update status di PostgreSQL\n2. Record transaksi di Hyperledger Fabric\n3. Chaincode: customs-cc\n4. Function: UpdateCustomsStatus`);
+  const handleApprove = async (clearanceId: string) => {
+    try {
+      await fetch(`${API_URL}/rpc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'UpdateCustomsStatus', params: { customs_clearance_id: clearanceId, status: 'approved' }, id: Date.now() })
+      });
+      await fetchData();
+    } catch (err) {
+      console.error("Failed to approve", err);
+    }
   };
 
-  const handleReject = (clearanceId: string) => {
-    alert(`Customs clearance ${clearanceId} akan di-reject!\n\nProses:\n1. Update status di PostgreSQL\n2. Record transaksi di Hyperledger Fabric\n3. Chaincode: customs-cc\n4. Function: UpdateCustomsStatus`);
+  const handleReject = async (clearanceId: string) => {
+    try {
+      await fetch(`${API_URL}/rpc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'UpdateCustomsStatus', params: { customs_clearance_id: clearanceId, status: 'rejected' }, id: Date.now() })
+      });
+      await fetchData();
+    } catch (err) {
+      console.error("Failed to reject", err);
+    }
+  };
+
+  const handleSubmitPIB = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    try {
+      await fetch(`${API_URL}/rpc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'SubmitCustomsClearance',
+          params: { shipment_id: formData.get('shipment_id'), pib_number: formData.get('pib_number') },
+          id: Date.now()
+        })
+      });
+      setShowSubmitModal(false);
+      await fetchData();
+    } catch (err) {
+      console.error("Failed to submit PIB", err);
+      alert("Failed to submit");
+    }
   };
 
   const statusStats = {
-    pending: mockCustomsClearance.filter(c => c.customs_status === 'pending').length,
-    approved: mockCustomsClearance.filter(c => c.customs_status === 'approved').length,
-    inspection: mockCustomsClearance.filter(c => c.customs_status === 'inspection').length,
-    rejected: mockCustomsClearance.filter(c => c.customs_status === 'rejected').length,
+    pending: customsClearances.filter(c => c.customs_status === 'pending').length,
+    approved: customsClearances.filter(c => c.customs_status === 'approved').length,
+    inspection: customsClearances.filter(c => c.customs_status === 'inspection').length,
+    rejected: customsClearances.filter(c => c.customs_status === 'rejected').length,
   };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold text-gray-900">Customs Clearance</h2>
-        <p className="text-gray-600 mt-1">Manajemen perizinan bea cukai</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">Customs Clearance</h2>
+          <p className="text-gray-600 mt-1">Manajemen perizinan bea cukai</p>
+        </div>
+        <button 
+          onClick={() => setShowSubmitModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+        >
+          <Plus className="w-5 h-5" />
+          Submit PIB
+        </button>
       </div>
 
       {/* Search and Filter */}
@@ -121,8 +205,10 @@ export function CustomsClearance() {
 
       {/* Clearances List */}
       <div className="space-y-4">
-        {filteredClearances.map((clearance) => {
-          const shipment = mockShipments.find(s => s.shipment_id === clearance.shipment_id);
+        {isLoading ? (
+           <div className="text-center py-12 text-gray-500">Loading data...</div>
+        ) : filteredClearances.map((clearance) => {
+          const shipment = shipments.find(s => s.shipment_id === clearance.shipment_id);
           
           return (
             <div key={clearance.customs_clearance_id} className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-shadow">
@@ -229,10 +315,48 @@ export function CustomsClearance() {
         })}
       </div>
 
-      {filteredClearances.length === 0 && (
+      {!isLoading && filteredClearances.length === 0 && (
         <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
           <Shield className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-600">Tidak ada customs clearance ditemukan</p>
+        </div>
+      )}
+
+      {/* MODAL SUBMIT PIB */}
+      {showSubmitModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-xl font-bold text-gray-900">Submit Dokumen PIB</h3>
+              <button onClick={() => setShowSubmitModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <form onSubmit={handleSubmitPIB} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Shipment</label>
+                  <select name="shipment_id" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600">
+                    <option value="">-- Pilih Shipment --</option>
+                    {shipments.map(s => (
+                      <option key={s.shipment_id} value={s.shipment_id}>
+                        {s.shipment_code} - {s.goods_description} ({s.origin_port} &rarr; {s.destination_port})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nomor PIB (Pemberitahuan Impor Barang)</label>
+                  <input type="text" name="pib_number" required placeholder="Contoh: PIB-20260531-ABC" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600" />
+                </div>
+                <div className="pt-4">
+                  <button type="submit" className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                    Submit ke Bea Cukai
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       )}
     </div>
