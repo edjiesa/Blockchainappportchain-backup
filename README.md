@@ -59,8 +59,8 @@
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/edjiesa/Blockchainappportchain.git
-cd Blockchainappportchain
+git clone https://github.com/edjiesa/RESPONSI-BLOCKCHAIN.git
+cd RESPONSI-BLOCKCHAIN
 ```
 
 ### 2. Jalankan Seluruh Stack (1 Perintah)
