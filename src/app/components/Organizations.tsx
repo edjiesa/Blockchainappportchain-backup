@@ -1,16 +1,43 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Building2, Users, Network, X, Shield, Key } from 'lucide-react';
-import { mockOrganizations, mockUsers } from '../data/portData';
+import { mockOrganizations } from '../data/portData';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export function Organizations() {
   const [selectedOrg, setSelectedOrg] = useState<any>(null);
   const [modalType, setModalType] = useState<'details' | 'users' | null>(null);
   const [showRegisterForm, setShowRegisterForm] = useState(false);
   
-  // Local state to hold users so we can dynamically add new ones
-  const [users, setUsers] = useState(mockUsers);
+  const [users, setUsers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleRegisterUser = (e: React.FormEvent) => {
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch(`${API_URL}/rpc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'GetUsers',
+          params: {},
+          id: Date.now(),
+        }),
+      });
+      const data = await res.json();
+      if (data.result) setUsers(data.result);
+    } catch (err) {
+      console.error("Failed to fetch users", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const handleRegisterUser = async (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.target as HTMLFormElement);
     const newUser = {
@@ -19,11 +46,30 @@ export function Organizations() {
       username: formData.get('username') as string,
       email: formData.get('email') as string,
       role_name: formData.get('role') as string,
-      is_active: true,
-      created_at: new Date().toISOString()
     };
-    setUsers([...users, newUser]);
-    setShowRegisterForm(false);
+    
+    try {
+      const res = await fetch(`${API_URL}/rpc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'RegisterUser',
+          params: newUser,
+          id: Date.now(),
+        }),
+      });
+      const data = await res.json();
+      if (data.error) {
+         alert("Error: " + data.error.message);
+      } else {
+         await fetchUsers();
+         setShowRegisterForm(false);
+      }
+    } catch (err) {
+      console.error("Failed to register user", err);
+      alert("Failed to connect to backend");
+    }
   };
   return (
     <div className="space-y-6">
@@ -68,7 +114,7 @@ export function Organizations() {
             </div>
             <div>
               <p className="text-xs text-gray-600">Total Users</p>
-              <p className="text-2xl font-bold text-gray-900">{mockUsers.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{isLoading ? '...' : users.length}</p>
             </div>
           </div>
         </div>

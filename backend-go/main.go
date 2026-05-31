@@ -123,6 +123,10 @@ func rpcHandler(w http.ResponseWriter, r *http.Request) {
 		result, errObj = handleGetAllShipments()
 	case "GetDashboardStats":
 		result, errObj = handleGetDashboardStats()
+	case "RegisterUser":
+		result, errObj = handleRegisterUser(req.Params)
+	case "GetUsers":
+		result, errObj = handleGetUsers()
 	default:
 		errObj = map[string]string{"code": "-32601", "message": "Method not found"}
 	}
@@ -139,6 +143,80 @@ func rpcHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // ---- LOGIC METHODS ----
+
+func handleRegisterUser(params json.RawMessage) (interface{}, interface{}) {
+	var input struct {
+		UserID         string `json:"user_id"`
+		OrganizationID string `json:"organization_id"`
+		Username       string `json:"username"`
+		Email          string `json:"email"`
+		RoleName       string `json:"role_name"`
+	}
+	if err := json.Unmarshal(params, &input); err != nil {
+		return nil, map[string]string{"code": "-32602", "message": "Invalid params"}
+	}
+
+	txID := uuid.New().String()
+
+	// Insert into DB
+	_, err := db.Exec(`
+		INSERT INTO users (user_id, organization_id, full_name, email, role_name, is_active)
+		VALUES ($1, $2, $3, $4, $5, true)
+	`, input.UserID, input.OrganizationID, input.Username, input.Email, input.RoleName)
+	if err != nil {
+		log.Printf("DB Insert Error: %v", err)
+		return nil, map[string]string{"code": "-32001", "message": "Failed to insert into database"}
+	}
+
+	// Simulate Blockchain TX for Fabric CA Registration
+	db.Exec(`
+		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
+		VALUES ($1, $2, 'port-channel', 'fabric-ca', 'RegisterUser', 'VALID')
+	`, txID, uuid.New().String())
+
+	return map[string]interface{}{
+		"success": true,
+		"message": "User registered successfully",
+		"tx_id":   txID,
+	}, nil
+}
+
+func handleGetUsers() (interface{}, interface{}) {
+	rows, err := db.Query(`
+		SELECT user_id, organization_id, full_name, email, role_name, is_active, created_at
+		FROM users ORDER BY created_at DESC
+	`)
+	if err != nil {
+		log.Printf("Query Error: %v", err)
+		return nil, map[string]string{"code": "-32002", "message": "Database error"}
+	}
+	defer rows.Close()
+
+	var users []map[string]interface{}
+	for rows.Next() {
+		var (
+			uID, oID, fName, email, rName string
+			isActive                      bool
+			createdAt                     time.Time
+		)
+		if err := rows.Scan(&uID, &oID, &fName, &email, &rName, &isActive, &createdAt); err == nil {
+			users = append(users, map[string]interface{}{
+				"user_id":         uID,
+				"organization_id": oID,
+				"username":        fName,
+				"email":           email,
+				"role_name":       rName,
+				"is_active":       isActive,
+				"created_at":      createdAt,
+			})
+		}
+	}
+	if users == nil {
+		users = []map[string]interface{}{}
+	}
+	return users, nil
+}
+
 
 func handleCreateShipment(params json.RawMessage) (interface{}, interface{}) {
 	var input struct {
