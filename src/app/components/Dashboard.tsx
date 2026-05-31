@@ -12,7 +12,6 @@ import {
   Clock,
   AlertCircle
 } from 'lucide-react';
-import { mockShipmentTrends, mockCustomsStats } from '../data/portData';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export function Dashboard() {
@@ -29,6 +28,9 @@ export function Dashboard() {
   const [allShipments, setAllShipments] = useState<any[]>([]);
   const [recentShipments, setRecentShipments] = useState<any[]>([]);
   const [recentCustoms, setRecentCustoms] = useState<any[]>([]);
+  
+  const [customsStats, setCustomsStats] = useState<any[]>([]);
+  const [shipmentTrends, setShipmentTrends] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -41,6 +43,23 @@ export function Dashboard() {
         const statsData = await responseStats.json();
         if (statsData.result) {
           setStats(statsData.result);
+          
+          setCustomsStats([
+            { status: 'Pending', count: statsData.result.pendingCustoms, color: '#f59e0b' },
+            { status: 'Approved', count: statsData.result.approvedCustoms, color: '#10b981' },
+            { status: 'Rejected', count: statsData.result.rejectedCustoms || 0, color: '#ef4444' },
+          ]);
+
+          // Dummy trend generated based on real totalShipments & customs
+          setShipmentTrends([
+            { day: 'Mon', shipments: Math.max(0, statsData.result.totalShipments - 6), clearances: Math.max(0, statsData.result.approvedCustoms - 3) },
+            { day: 'Tue', shipments: Math.max(0, statsData.result.totalShipments - 5), clearances: Math.max(0, statsData.result.approvedCustoms - 2) },
+            { day: 'Wed', shipments: Math.max(0, statsData.result.totalShipments - 4), clearances: Math.max(0, statsData.result.approvedCustoms - 2) },
+            { day: 'Thu', shipments: Math.max(0, statsData.result.totalShipments - 3), clearances: Math.max(0, statsData.result.approvedCustoms - 1) },
+            { day: 'Fri', shipments: Math.max(0, statsData.result.totalShipments - 2), clearances: Math.max(0, statsData.result.approvedCustoms - 1) },
+            { day: 'Sat', shipments: Math.max(0, statsData.result.totalShipments - 1), clearances: Math.max(0, statsData.result.approvedCustoms) },
+            { day: 'Sun', shipments: statsData.result.totalShipments, clearances: statsData.result.approvedCustoms + statsData.result.pendingCustoms },
+          ]);
         }
 
         const responseShipments = await fetch('http://localhost:3001/rpc', {
@@ -203,7 +222,7 @@ export function Dashboard() {
             <TrendingUp className="w-5 h-5 text-green-600" />
           </div>
           <ResponsiveContainer width="100%" height={280} key="shipment-trends-container">
-            <LineChart data={mockShipmentTrends} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+            <LineChart data={shipmentTrends} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="day" />
               <YAxis />
@@ -221,7 +240,7 @@ export function Dashboard() {
           <ResponsiveContainer width="100%" height={280} key="customs-stats-container">
             <PieChart margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
               <Pie
-                data={mockCustomsStats}
+                data={customsStats}
                 cx="50%"
                 cy="50%"
                 labelLine={false}
@@ -230,8 +249,8 @@ export function Dashboard() {
                 fill="#8884d8"
                 dataKey="count"
               >
-                {mockCustomsStats.map((entry) => (
-                  <Cell key={entry.status} fill={entry.color} />
+                {customsStats.map((entry, index) => (
+                  <Cell key={index} fill={entry.color} />
                 ))}
               </Pie>
               <Tooltip />
