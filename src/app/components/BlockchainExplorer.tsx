@@ -239,7 +239,7 @@ export function BlockchainExplorer() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-                      {tx.timestamp ? new Date(tx.timestamp).toLocaleString('id-ID') : 'N/A'}
+                      {tx.created_at ? new Date(tx.created_at).toLocaleString('id-ID') : 'N/A'}
                     </td>
                   </tr>
                 ))
