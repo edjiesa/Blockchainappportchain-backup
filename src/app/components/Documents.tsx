@@ -149,7 +149,6 @@ export function Documents() {
           
           return (
             <div key={doc.document_id} className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-shadow flex flex-col justify-between">
-              <div>
                 <div className="flex items-start gap-3 mb-4">
                   <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
                     doc.document_title === 'Shipping' ? 'bg-blue-100' :
