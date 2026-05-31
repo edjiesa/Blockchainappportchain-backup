@@ -199,9 +199,3 @@ CREATE TRIGGER audit_shipments_trigger
 AFTER INSERT OR UPDATE OR DELETE ON shipments
 FOR EACH ROW EXECUTE FUNCTION notify_pgaudit_event();
 
--- Initial Seed Data
-INSERT INTO organizations (organization_id, organization_name, organization_type) VALUES
-  ('org-001', 'Port Authority Jakarta', 'Port Authority'),
-  ('org-002', 'Indonesia Customs', 'Customs'),
-  ('org-003', 'Banking Corp', 'Banking')
-ON CONFLICT DO NOTHING;
