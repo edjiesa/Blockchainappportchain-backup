@@ -134,6 +134,12 @@ func rpcHandler(w http.ResponseWriter, r *http.Request) {
 		result, errObj = handleGetDocuments()
 	case "UploadDocument":
 		result, errObj = handleUploadDocument(req.Params)
+	case "GetOrganizations":
+		result, errObj = handleGetOrganizations()
+	case "GetEBLTokens":
+		result, errObj = handleGetEBLTokens()
+	case "TransferEBL":
+		result, errObj = handleTransferEBL(req.Params)
 	case "SubmitCustomsClearance":
 		result, errObj = handleSubmitCustomsClearance(req.Params)
 	case "UpdateCustomsStatus":
@@ -393,6 +399,150 @@ func handleUploadDocument(params json.RawMessage) (interface{}, interface{}) {
 	}
 
 	return map[string]interface{}{"success": true, "message": "Document uploaded successfully", "document_id": docID}, nil
+}
+
+func handleGetOrganizations() (interface{}, interface{}) {
+	rows, err := db.Query(`SELECT organization_id, organization_name, organization_type FROM organizations ORDER BY organization_name`)
+	if err != nil {
+		log.Printf("Query Error: %v", err)
+		return nil, map[string]string{"code": "-32002", "message": "Database error"}
+	}
+	defer rows.Close()
+
+	var orgs []map[string]interface{}
+	for rows.Next() {
+		var oID, oName, oType sql.NullString
+		if err := rows.Scan(&oID, &oName, &oType); err == nil {
+			orgs = append(orgs, map[string]interface{}{
+				"organization_id":   oID.String,
+				"organization_name": oName.String,
+				"organization_type": oType.String,
+			})
+		}
+	}
+	if orgs == nil {
+		orgs = []map[string]interface{}{}
+	}
+	return orgs, nil
+}
+
+func handleGetEBLTokens() (interface{}, interface{}) {
+	// Auto-mint a dummy EBL if none exists
+	var count int
+	db.QueryRow("SELECT COUNT(*) FROM ebl_tokens").Scan(&count)
+	if count == 0 {
+		eblID := "ebl-" + uuid.New().String()[:8]
+		txID := "tx-" + uuid.New().String()[:8]
+		
+		// Insert a dummy document if none exists, just to attach the EBL
+		var docID string
+		err := db.QueryRow("SELECT document_id FROM documents LIMIT 1").Scan(&docID)
+		if err != nil || docID == "" {
+			docID = "doc-" + uuid.New().String()[:8]
+			db.Exec(`INSERT INTO documents (document_id, document_type, document_title, issued_at) VALUES ($1, 'Bill of Lading', 'Auto Generated EBL Doc', NOW())`, docID)
+		}
+
+		// Insert a dummy organization if none exists
+		var orgID string
+		err = db.QueryRow("SELECT organization_id FROM organizations LIMIT 1").Scan(&orgID)
+		if err != nil || orgID == "" {
+			orgID = "org-001"
+		}
+
+		db.Exec(`
+			INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
+			VALUES ($1, $2, 'port-channel', 'ebl-cc', 'MintEBL', 'VALID')
+		`, txID, uuid.New().String())
+
+		db.Exec(`
+			INSERT INTO ebl_tokens (ebl_token_id, document_id, token_number, current_owner_org_id, token_status, issued_at, blockchain_tx_id)
+			VALUES ($1, $2, 'EBL-TOKEN-001', $3, 'ACTIVE', NOW(), $4)
+		`, eblID, docID, orgID, txID)
+	}
+
+	rows, err := db.Query(`
+		SELECT ebl_token_id, document_id, token_number, current_owner_org_id, token_status, issued_at, blockchain_tx_id
+		FROM ebl_tokens ORDER BY issued_at DESC
+	`)
+	if err != nil {
+		log.Printf("Query Error: %v", err)
+		return nil, map[string]string{"code": "-32002", "message": "Database error"}
+	}
+	defer rows.Close()
+
+	var tokens []map[string]interface{}
+	for rows.Next() {
+		var (
+			eID, dID, tNum, cOrgID, tStatus, bTxID sql.NullString
+			issuedAt                               time.Time
+		)
+		if err := rows.Scan(&eID, &dID, &tNum, &cOrgID, &tStatus, &issuedAt, &bTxID); err == nil {
+			tokens = append(tokens, map[string]interface{}{
+				"ebl_token_id":         eID.String,
+				"document_id":          dID.String,
+				"token_number":         tNum.String,
+				"current_owner_org_id": cOrgID.String,
+				"token_status":         tStatus.String,
+				"issued_at":            issuedAt,
+				"blockchain_tx_id":     bTxID.String,
+			})
+		}
+	}
+	if tokens == nil {
+		tokens = []map[string]interface{}{}
+	}
+	return tokens, nil
+}
+
+func handleTransferEBL(params json.RawMessage) (interface{}, interface{}) {
+	var input struct {
+		TokenNumber     string `json:"token_number"`
+		ToOrgID         string `json:"to_org_id"`
+		TransferReason  string `json:"transfer_reason"`
+	}
+	if err := json.Unmarshal(params, &input); err != nil {
+		return nil, map[string]string{"code": "-32602", "message": "Invalid params"}
+	}
+
+	txID := "tx-" + uuid.New().String()[:8]
+	transferID := "trf-" + uuid.New().String()[:8]
+
+	var eblID, fromOrgID string
+	err := db.QueryRow("SELECT ebl_token_id, current_owner_org_id FROM ebl_tokens WHERE token_number = $1", input.TokenNumber).Scan(&eblID, &fromOrgID)
+	if err != nil {
+		return nil, map[string]string{"code": "-32002", "message": "Token not found"}
+	}
+
+	// 1. Log to Blockchain Transactions
+	_, err = db.Exec(`
+		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
+		VALUES ($1, $2, 'port-channel', 'ebl-cc', 'TransferEBL', 'VALID')
+	`, txID, uuid.New().String())
+	if err != nil {
+		log.Printf("Blockchain TX Insert Error: %v", err)
+		return nil, map[string]string{"code": "-32001", "message": "Failed to log blockchain tx"}
+	}
+
+	// 2. Insert Transfer Record
+	_, err = db.Exec(`
+		INSERT INTO ebl_transfers (ebl_transfer_id, ebl_token_id, from_org_id, to_org_id, transfer_reason, transferred_at, blockchain_tx_id)
+		VALUES ($1, $2, $3, $4, $5, NOW(), $6)
+	`, transferID, eblID, fromOrgID, input.ToOrgID, input.TransferReason, txID)
+	if err != nil {
+		log.Printf("DB Insert Transfer Error: %v", err)
+		return nil, map[string]string{"code": "-32001", "message": "Failed to record transfer"}
+	}
+
+	// 3. Update EBL Token Owner
+	_, err = db.Exec(`
+		UPDATE ebl_tokens SET current_owner_org_id = $1 WHERE ebl_token_id = $2
+	`, input.ToOrgID, eblID)
+	if err != nil {
+		log.Printf("DB Update EBL Error: %v", err)
+		return nil, map[string]string{"code": "-32001", "message": "Failed to update EBL ownership"}
+	}
+
+	return map[string]interface{}{"success": true, "message": "EBL transferred successfully"}, nil
 }
 
 func handleSubmitCustomsClearance(params json.RawMessage) (interface{}, interface{}) {

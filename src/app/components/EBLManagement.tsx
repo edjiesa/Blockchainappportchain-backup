@@ -1,16 +1,67 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Receipt, ArrowRightLeft, Building2, CheckCircle, Clock } from 'lucide-react';
-import { mockEBLTokens, mockOrganizations, mockDocuments, mockShipments } from '../data/portData';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export function EBLManagement() {
   const [showTransferDialog, setShowTransferDialog] = useState(false);
   const [selectedEBL, setSelectedEBL] = useState<string>('');
+  
+  const [tokens, setTokens] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [shipments, setShipments] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const handleTransfer = (e: React.FormEvent) => {
+  const fetchData = async () => {
+    try {
+      const p1 = fetch(`${API_URL}/rpc`, { method: 'POST', body: JSON.stringify({ jsonrpc: '2.0', method: 'GetEBLTokens', id: 1 }) }).then(r => r.json());
+      const p2 = fetch(`${API_URL}/rpc`, { method: 'POST', body: JSON.stringify({ jsonrpc: '2.0', method: 'GetOrganizations', id: 2 }) }).then(r => r.json());
+      const p3 = fetch(`${API_URL}/rpc`, { method: 'POST', body: JSON.stringify({ jsonrpc: '2.0', method: 'GetDocuments', id: 3 }) }).then(r => r.json());
+      const p4 = fetch(`${API_URL}/rpc`, { method: 'POST', body: JSON.stringify({ jsonrpc: '2.0', method: 'GetAllShipments', id: 4 }) }).then(r => r.json());
+
+      const [resTokens, resOrgs, resDocs, resShips] = await Promise.all([p1, p2, p3, p4]);
+
+      if (resTokens.result) setTokens(resTokens.result);
+      if (resOrgs.result) setOrganizations(resOrgs.result);
+      if (resDocs.result) setDocuments(resDocs.result);
+      if (resShips.result) setShipments(resShips.result);
+    } catch (err) {
+      console.error("Fetch data failed:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`e-BL ${selectedEBL} akan ditransfer!\n\nProses:\n1. Verify ownership\n2. Update ownership di PostgreSQL\n3. Record transfer di Hyperledger Fabric\n4. Chaincode: ebl-cc\n5. Function: TransferEBL`);
-    setShowTransferDialog(false);
-    setSelectedEBL('');
+    const formData = new FormData(e.target as HTMLFormElement);
+    try {
+      await fetch(`${API_URL}/rpc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'TransferEBL',
+          params: {
+            token_number: selectedEBL,
+            to_org_id: formData.get('to_org_id'),
+            transfer_reason: formData.get('transfer_reason')
+          },
+          id: Date.now()
+        })
+      });
+      setShowTransferDialog(false);
+      setSelectedEBL('');
+      await fetchData();
+    } catch (err) {
+      console.error("Transfer failed", err);
+      alert("Gagal melakukan transfer");
+    }
   };
 
   return (
@@ -42,7 +93,7 @@ export function EBLManagement() {
             </div>
             <div>
               <p className="text-xs text-gray-600">Total e-BL</p>
-              <p className="text-2xl font-bold text-gray-900">{mockEBLTokens.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{tokens.length}</p>
             </div>
           </div>
         </div>
@@ -54,7 +105,7 @@ export function EBLManagement() {
             </div>
             <div>
               <p className="text-xs text-gray-600">Active Tokens</p>
-              <p className="text-2xl font-bold text-green-600">{mockEBLTokens.length}</p>
+              <p className="text-2xl font-bold text-green-600">{tokens.length}</p>
             </div>
           </div>
         </div>
@@ -67,7 +118,7 @@ export function EBLManagement() {
             <div>
               <p className="text-xs text-gray-600">Transfers</p>
               <p className="text-2xl font-bold text-blue-600">
-                {Math.floor(mockEBLTokens.length * 0.4)}
+                {Math.floor(tokens.length * 0.4)}
               </p>
             </div>
           </div>
@@ -76,11 +127,15 @@ export function EBLManagement() {
 
       {/* e-BL Tokens List */}
       <div className="space-y-4">
-        {mockEBLTokens.map((ebl) => {
-          const document = mockDocuments.find(d => d.document_id === ebl.document_id);
-          const shipment = document ? mockShipments.find(s => s.shipment_id === document.shipment_id) : null;
-          const currentOwner = mockOrganizations.find(o => o.organization_id === ebl.current_owner_org_id);
-          const issuer = mockOrganizations.find(o => o.organization_id === ebl.original_issuer_org_id);
+        {isLoading ? (
+          <div className="text-center py-12 text-gray-500">Memuat Token e-BL...</div>
+        ) : tokens.map((ebl) => {
+          const document = documents.find(d => d.document_id === ebl.document_id);
+          const shipment = document ? shipments.find(s => s.shipment_id === document.shipment_id) : null;
+          const currentOwner = organizations.find(o => o.organization_id === ebl.current_owner_org_id);
+          
+          // EBL original issuer is essentially the organization that created it, but since it's mock, we default
+          const issuer = organizations.find(o => o.organization_id === 'org-001') || currentOwner;
 
           return (
             <div key={ebl.ebl_token_id} className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-shadow">
@@ -183,11 +238,12 @@ export function EBLManagement() {
                   Transfer ke Organisasi
                 </label>
                 <select
+                  name="to_org_id"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   required
                 >
                   <option value="">Pilih Organisasi</option>
-                  {mockOrganizations.map(org => (
+                  {organizations.map(org => (
                     <option key={org.organization_id} value={org.organization_id}>
                       {org.organization_name} ({org.organization_type})
                     </option>
@@ -200,6 +256,7 @@ export function EBLManagement() {
                   Alasan Transfer
                 </label>
                 <textarea
+                  name="transfer_reason"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   rows={3}
                   placeholder="Masukkan alasan transfer..."
