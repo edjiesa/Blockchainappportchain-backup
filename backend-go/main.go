@@ -57,6 +57,9 @@ func main() {
 		})
 	})
 
+	http.HandleFunc("/api/explorer/transactions", handleExplorerTransactions)
+	http.HandleFunc("/api/explorer/stats", handleExplorerStats)
+
 	// Add CORS support for the frontend
 	handler := corsMiddleware(http.DefaultServeMux)
 
@@ -251,6 +254,62 @@ func handleGetDashboardStats() (interface{}, interface{}) {
 	}
 
 	return stats, nil
+}
+
+func handleExplorerTransactions(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	rows, err := db.Query(`
+		SELECT blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status, created_at
+		FROM blockchain_transactions ORDER BY created_at DESC LIMIT 50
+	`)
+	if err != nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{"success": false})
+		return
+	}
+	defer rows.Close()
+
+	var txs []map[string]interface{}
+	for rows.Next() {
+		var (
+			bID, tID, cName, ccName, tType, vStatus string
+			createdAt time.Time
+		)
+		if err := rows.Scan(&bID, &tID, &cName, &ccName, &tType, &vStatus, &createdAt); err == nil {
+			txs = append(txs, map[string]interface{}{
+				"blockchain_tx_id":  bID,
+				"tx_id":             tID,
+				"channel_name":      cName,
+				"chaincode_name":    ccName,
+				"function_name":     tType,
+				"validation_status": vStatus,
+				"created_at":        createdAt,
+			})
+		}
+	}
+	if txs == nil {
+		txs = []map[string]interface{}{}
+	}
+	json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "data": txs})
+}
+
+func handleExplorerStats(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	var total int
+	db.QueryRow("SELECT COUNT(*) FROM blockchain_transactions").Scan(&total)
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"data": map[string]interface{}{
+			"total_transactions": total,
+			"valid_transactions": total,
+			"latest_block":       total,
+			"chaincodes":         []string{"portchain-cc", "customs-cc", "ebl-cc"},
+		},
+	})
 }
 
 // ---- BACKGROUND LISTENER ----
