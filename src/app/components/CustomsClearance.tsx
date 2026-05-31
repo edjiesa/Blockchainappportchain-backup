@@ -87,7 +87,7 @@ export function CustomsClearance() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jsonrpc: '2.0',
-          method: 'SubmitCustomsClearance',
+          method: 'CreateCustomsClearance',
           params: { shipment_id: formData.get('shipment_id'), pib_number: formData.get('pib_number') },
           id: Date.now()
         })

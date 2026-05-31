@@ -46,7 +46,7 @@ export function EBLManagement() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           jsonrpc: '2.0',
-          method: 'TransferEBL',
+          method: 'TransferEBLToken',
           params: {
             token_number: selectedEBL,
             to_org_id: formData.get('to_org_id'),

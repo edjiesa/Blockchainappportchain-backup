@@ -138,10 +138,10 @@ func rpcHandler(w http.ResponseWriter, r *http.Request) {
 		result, errObj = handleGetOrganizations()
 	case "GetEBLTokens":
 		result, errObj = handleGetEBLTokens()
-	case "TransferEBL":
-		result, errObj = handleTransferEBL(req.Params)
-	case "SubmitCustomsClearance":
-		result, errObj = handleSubmitCustomsClearance(req.Params)
+	case "TransferEBLToken":
+		result, errObj = handleTransferEBLToken(req.Params)
+	case "CreateCustomsClearance":
+		result, errObj = handleCreateCustomsClearance(req.Params)
 	case "UpdateCustomsStatus":
 		result, errObj = handleUpdateCustomsStatus(req.Params)
 	default:
@@ -451,7 +451,7 @@ func handleGetEBLTokens() (interface{}, interface{}) {
 
 		db.Exec(`
 			INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
-			VALUES ($1, $2, 'port-channel', 'ebl-cc', 'MintEBL', 'VALID')
+			VALUES ($1, $2, 'port-channel', 'ebl-cc', 'IssueEBLToken', 'VALID')
 		`, txID, uuid.New().String())
 
 		db.Exec(`
@@ -494,7 +494,7 @@ func handleGetEBLTokens() (interface{}, interface{}) {
 	return tokens, nil
 }
 
-func handleTransferEBL(params json.RawMessage) (interface{}, interface{}) {
+func handleTransferEBLToken(params json.RawMessage) (interface{}, interface{}) {
 	var input struct {
 		TokenNumber     string `json:"token_number"`
 		ToOrgID         string `json:"to_org_id"`
@@ -516,7 +516,7 @@ func handleTransferEBL(params json.RawMessage) (interface{}, interface{}) {
 	// 1. Log to Blockchain Transactions
 	_, err = db.Exec(`
 		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
-		VALUES ($1, $2, 'port-channel', 'ebl-cc', 'TransferEBL', 'VALID')
+		VALUES ($1, $2, 'port-channel', 'ebl-cc', 'TransferEBLToken', 'VALID')
 	`, txID, uuid.New().String())
 	if err != nil {
 		log.Printf("Blockchain TX Insert Error: %v", err)
@@ -545,7 +545,7 @@ func handleTransferEBL(params json.RawMessage) (interface{}, interface{}) {
 	return map[string]interface{}{"success": true, "message": "EBL transferred successfully"}, nil
 }
 
-func handleSubmitCustomsClearance(params json.RawMessage) (interface{}, interface{}) {
+func handleCreateCustomsClearance(params json.RawMessage) (interface{}, interface{}) {
 	var input struct {
 		ShipmentID string `json:"shipment_id"`
 		PibNumber  string `json:"pib_number"`
@@ -560,7 +560,7 @@ func handleSubmitCustomsClearance(params json.RawMessage) (interface{}, interfac
 	// Insert into blockchain_transactions first to satisfy foreign key constraint
 	_, err := db.Exec(`
 		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
-		VALUES ($1, $2, 'port-channel', 'customs-cc', 'SubmitCustomsClearance', 'VALID')
+		VALUES ($1, $2, 'port-channel', 'customs-cc', 'CreateCustomsClearance', 'VALID')
 	`, txID, uuid.New().String())
 	if err != nil {
 		log.Printf("Blockchain TX Insert Error: %v", err)

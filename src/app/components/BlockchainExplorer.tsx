@@ -33,7 +33,7 @@ export function BlockchainExplorer() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedTxs = filteredTxs.slice(startIndex, startIndex + itemsPerPage);
   const chaincodes = ['portchain-cc', 'customs-cc', 'ebl-cc'];
-  const functions = ['CreateShipment', 'UpdateCustomsStatus', 'TransferEBL', 'UploadDocument', 'CreateContainer'];
+  const functions = ['CreateShipment', 'UpdateCustomsStatus', 'TransferEBLToken', 'UploadDocument', 'CreateContainer'];
 
   const checkStatus = useCallback(async () => {
     setIsChecking(true);
