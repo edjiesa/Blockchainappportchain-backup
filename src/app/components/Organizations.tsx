@@ -5,6 +5,26 @@ import { mockOrganizations, mockUsers } from '../data/portData';
 export function Organizations() {
   const [selectedOrg, setSelectedOrg] = useState<any>(null);
   const [modalType, setModalType] = useState<'details' | 'users' | null>(null);
+  const [showRegisterForm, setShowRegisterForm] = useState(false);
+  
+  // Local state to hold users so we can dynamically add new ones
+  const [users, setUsers] = useState(mockUsers);
+
+  const handleRegisterUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const newUser = {
+      user_id: `usr-${Date.now()}`,
+      organization_id: selectedOrg.organization_id,
+      username: formData.get('username') as string,
+      email: formData.get('email') as string,
+      role_name: formData.get('role') as string,
+      is_active: true,
+      created_at: new Date().toISOString()
+    };
+    setUsers([...users, newUser]);
+    setShowRegisterForm(false);
+  };
   return (
     <div className="space-y-6">
       <div>
@@ -69,7 +89,7 @@ export function Organizations() {
       {/* Organizations Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {mockOrganizations.map((org) => {
-          const orgUsers = mockUsers.filter(u => u.organization_id === org.organization_id);
+          const orgUsers = users.filter(u => u.organization_id === org.organization_id);
           
           return (
             <div key={org.organization_id} className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-shadow">
@@ -232,11 +252,52 @@ export function Organizations() {
                     </div>
                   </div>
                 </div>
+              ) : showRegisterForm ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <button onClick={() => setShowRegisterForm(false)} className="text-gray-500 hover:text-gray-800 text-sm font-medium">
+                      &larr; Back to User List
+                    </button>
+                  </div>
+                  <form onSubmit={handleRegisterUser} className="space-y-4 bg-gray-50 p-5 rounded-xl border border-gray-100">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Username / Enrollment ID</label>
+                      <input type="text" name="username" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600" placeholder="e.g. admin_bank" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                      <input type="email" name="email" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600" placeholder="e.g. admin@banking.com" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Fabric Role</label>
+                        <select name="role" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600">
+                          <option value="client">Client</option>
+                          <option value="admin">Admin</option>
+                          <option value="peer">Peer</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Affiliation</label>
+                        <select name="affiliation" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600">
+                          <option value={`${selectedOrg.organization_id}.department1`}>{selectedOrg.organization_id}.department1</option>
+                          <option value={`${selectedOrg.organization_id}.department2`}>{selectedOrg.organization_id}.department2</option>
+                        </select>
+                      </div>
+                    </div>
+                    <button type="submit" className="w-full mt-4 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                      Register User ke CA
+                    </button>
+                  </form>
+                </div>
               ) : (
                 <div className="space-y-4">
                   <div className="flex justify-between items-center mb-4">
                     <p className="text-sm text-gray-600">Daftar pengguna yang terdaftar di Fabric CA untuk organisasi ini.</p>
-                    <button className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+                    <button 
+                      onClick={() => setShowRegisterForm(true)}
+                      className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+                    >
                       + Register New User
                     </button>
                   </div>
@@ -251,7 +312,12 @@ export function Organizations() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {mockUsers.filter(u => u.organization_id === selectedOrg.organization_id).map(user => (
+                        {users.filter(u => u.organization_id === selectedOrg.organization_id).length === 0 && (
+                           <tr>
+                             <td colSpan={4} className="px-4 py-8 text-center text-gray-500 italic">Belum ada user yang terdaftar.</td>
+                           </tr>
+                        )}
+                        {users.filter(u => u.organization_id === selectedOrg.organization_id).map(user => (
                           <tr key={user.user_id} className="hover:bg-gray-50">
                             <td className="px-4 py-3 font-medium text-gray-900">{user.username}</td>
                             <td className="px-4 py-3">
@@ -273,7 +339,7 @@ export function Organizations() {
             </div>
             <div className="p-4 border-t border-gray-100 bg-gray-50 text-right rounded-b-2xl">
               <button 
-                onClick={() => { setSelectedOrg(null); setModalType(null); }}
+                onClick={() => { setSelectedOrg(null); setModalType(null); setShowRegisterForm(false); }}
                 className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50"
               >
                 Close
