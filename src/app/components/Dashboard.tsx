@@ -43,12 +43,12 @@ export function Dashboard() {
         const statsData = await responseStats.json();
         if (statsData.result) {
           setStats(statsData.result);
-          
-          setCustomsStats([
+          const rawCustomsStats = [
             { status: 'Pending', count: statsData.result.pendingCustoms, color: '#f59e0b' },
             { status: 'Approved', count: statsData.result.approvedCustoms, color: '#10b981' },
             { status: 'Rejected', count: statsData.result.rejectedCustoms || 0, color: '#ef4444' },
-          ]);
+          ];
+          setCustomsStats(rawCustomsStats.filter(item => item.count > 0));
 
           // Dummy trend generated based on real totalShipments & customs
           setShipmentTrends([
