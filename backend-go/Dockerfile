@@ -10,6 +10,9 @@ COPY go.mod ./
 # Copy source
 COPY . .
 
+# Generate go.sum and download dependencies
+RUN go mod tidy
+
 # Build
 RUN go build -o main .
 
