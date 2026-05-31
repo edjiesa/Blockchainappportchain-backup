@@ -258,7 +258,6 @@ func handleGetDashboardStats() (interface{}, interface{}) {
 
 func handleExplorerTransactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	rows, err := db.Query(`
 		SELECT blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status, created_at
@@ -296,7 +295,6 @@ func handleExplorerTransactions(w http.ResponseWriter, r *http.Request) {
 
 func handleExplorerStats(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	var total int
 	db.QueryRow("SELECT COUNT(*) FROM blockchain_transactions").Scan(&total)
