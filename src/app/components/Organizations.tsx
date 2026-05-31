@@ -1,7 +1,10 @@
-import { Building2, Users, Network } from 'lucide-react';
+import { useState } from 'react';
+import { Building2, Users, Network, X, Shield, Key } from 'lucide-react';
 import { mockOrganizations, mockUsers } from '../data/portData';
 
 export function Organizations() {
+  const [selectedOrg, setSelectedOrg] = useState<any>(null);
+  const [modalType, setModalType] = useState<'details' | 'users' | null>(null);
   return (
     <div className="space-y-6">
       <div>
@@ -119,10 +122,16 @@ export function Organizations() {
 
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="flex gap-2">
-                  <button className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                  <button 
+                    onClick={() => { setSelectedOrg(org); setModalType('details'); }}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
                     View Details
                   </button>
-                  <button className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                  <button 
+                    onClick={() => { setSelectedOrg(org); setModalType('users'); }}
+                    className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  >
                     Manage Users
                   </button>
                 </div>
@@ -170,6 +179,109 @@ export function Organizations() {
           </div>
         </div>
       </div>
+
+      {/* MODAL OVERLAY */}
+      {selectedOrg && modalType && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    {modalType === 'details' ? 'Organization Details' : 'Manage Users'}
+                  </h3>
+                  <p className="text-sm text-gray-500">{selectedOrg.organization_name}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => { setSelectedOrg(null); setModalType(null); }}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              {modalType === 'details' ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                      <p className="text-xs text-gray-500 mb-1">Organization MSP ID</p>
+                      <p className="font-mono font-bold text-gray-900">{selectedOrg.organization_id}MSP</p>
+                    </div>
+                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                      <p className="text-xs text-gray-500 mb-1">Certificate Authority</p>
+                      <div className="flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-green-600" />
+                        <p className="font-mono font-bold text-green-600">ca.{selectedOrg.organization_id}.com</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                    <div className="flex gap-3">
+                      <Key className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-blue-900">Crypto Material Storage</p>
+                        <p className="text-sm text-blue-800 mt-1">
+                          Sertifikat (X.509) untuk node Peer dan Orderer dari organisasi ini telah disinkronisasikan dan disimpan secara aman di dalam HSM (Hardware Security Module) terenkripsi.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <p className="text-sm text-gray-600">Daftar pengguna yang terdaftar di Fabric CA untuk organisasi ini.</p>
+                    <button className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">
+                      + Register New User
+                    </button>
+                  </div>
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-gray-50 text-gray-600">
+                        <tr>
+                          <th className="px-4 py-3 font-medium">Username</th>
+                          <th className="px-4 py-3 font-medium">Role</th>
+                          <th className="px-4 py-3 font-medium">Affiliation</th>
+                          <th className="px-4 py-3 font-medium text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {mockUsers.filter(u => u.organization_id === selectedOrg.organization_id).map(user => (
+                          <tr key={user.user_id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 font-medium text-gray-900">{user.username}</td>
+                            <td className="px-4 py-3">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                {user.role_name}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-gray-600">{selectedOrg.organization_id}.department1</td>
+                            <td className="px-4 py-3 text-right">
+                              <button className="text-blue-600 hover:text-blue-800 font-medium text-xs">Revoke</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-100 bg-gray-50 text-right rounded-b-2xl">
+              <button 
+                onClick={() => { setSelectedOrg(null); setModalType(null); }}
+                className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
