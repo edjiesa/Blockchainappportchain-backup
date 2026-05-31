@@ -327,13 +327,13 @@ export function Dashboard() {
                         {shipment?.shipment_code || 'N/A'}
                       </p>
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-2 ${
-                        customs.customs_status === 'APPROVED' 
+                        (customs.customs_status || '').toUpperCase() === 'APPROVED' 
                           ? 'bg-green-100 text-green-800'
-                          : customs.customs_status === 'REJECTED'
+                          : (customs.customs_status || '').toUpperCase() === 'REJECTED'
                           ? 'bg-red-100 text-red-800'
                           : 'bg-yellow-100 text-yellow-800'
                       }`}>
-                        {customs.customs_status}
+                        {(customs.customs_status || '').toUpperCase()}
                       </span>
                     </div>
                     <div className="text-right">
