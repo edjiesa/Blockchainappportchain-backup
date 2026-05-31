@@ -16,18 +16,48 @@ import { mockDashboardStats, mockShipments, mockCustomsClearance, mockShipmentTr
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export function Dashboard() {
-  const [stats, setStats] = useState(mockDashboardStats);
-  const [recentShipments] = useState(mockShipments.slice(0, 5));
-  const [recentCustoms] = useState(mockCustomsClearance.slice(0, 5));
+  const [stats, setStats] = useState({
+    totalShipments: 0,
+    pendingCustoms: 0,
+    approvedCustoms: 0,
+    activeEBLs: 0,
+    totalDocuments: 0,
+    activeContainers: 0,
+    channelNodes: 3,
+    totalTransactions: 0
+  });
+  const [recentShipments, setRecentShipments] = useState<any[]>([]);
+  const [recentCustoms, setRecentCustoms] = useState<any[]>([]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setStats(prev => ({
-        ...prev,
-        pendingCustoms: Math.max(0, prev.pendingCustoms + (Math.random() > 0.5 ? 1 : -1))
-      }));
-    }, 10000);
+    const fetchDashboard = async () => {
+      try {
+        const responseStats = await fetch('http://localhost:3001/rpc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: "2.0", method: "GetDashboardStats", params: {}, id: 1 })
+        });
+        const statsData = await responseStats.json();
+        if (statsData.result) {
+          setStats(statsData.result);
+        }
 
+        const responseShipments = await fetch('http://localhost:3001/rpc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: "2.0", method: "GetAllShipments", params: {}, id: 2 })
+        });
+        const shipData = await responseShipments.json();
+        if (shipData.result) {
+          setRecentShipments(shipData.result.slice(0, 5));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    
+    fetchDashboard();
+    const interval = setInterval(fetchDashboard, 10000);
     return () => clearInterval(interval);
   }, []);
 

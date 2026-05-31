@@ -1,29 +1,98 @@
-import { useState } from 'react';
-import { Search, Filter, Plus, Anchor, ChevronLeft, ChevronRight, Package } from 'lucide-react';
-import { mockShipments, mockContainers, mockOrganizations } from '../data/portData';
+import { useState, useEffect } from 'react';
+import { Search, Plus, Anchor, ChevronLeft, ChevronRight, Package } from 'lucide-react';
+import { mockContainers } from '../data/portData';
 
 export function Shipments() {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [shipments, setShipments] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const itemsPerPage = 10;
 
-  const filteredShipments = mockShipments.filter(ship =>
-    ship.shipment_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ship.vessel_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ship.exporter_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ship.importer_name.toLowerCase().includes(searchTerm.toLowerCase())
+  // Form State
+  const [formData, setFormData] = useState({
+    shipment_code: '',
+    exporter_name: '',
+    importer_name: '',
+    shipping_line_name: '',
+    vessel_name: '',
+    origin_port: '',
+    destination_port: '',
+    total_weight_kg: '',
+    goods_description: ''
+  });
+
+  const fetchShipments = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/rpc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "GetAllShipments",
+          params: {},
+          id: 1
+        })
+      });
+      const data = await response.json();
+      if (data.result) {
+        setShipments(data.result);
+      }
+    } catch (error) {
+      console.error("Failed to fetch shipments", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchShipments();
+  }, []);
+
+  const handleCreateShipment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        ...formData,
+        total_weight_kg: Number(formData.total_weight_kg)
+      };
+
+      const response = await fetch('http://localhost:3001/rpc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "CreateShipment",
+          params: payload,
+          id: 2
+        })
+      });
+      const data = await response.json();
+      
+      if (data.result) {
+        alert(`Shipment berhasil dicatat di PostgreSQL dan Blockchain!\nTxID: ${data.result.txId}`);
+        setShowCreateDialog(false);
+        fetchShipments(); // Refresh table
+      } else {
+        alert('Gagal membuat shipment');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Network error');
+    }
+  };
+
+  const filteredShipments = shipments.filter(ship =>
+    (ship.shipment_code || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (ship.vessel_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (ship.exporter_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (ship.importer_name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totalPages = Math.ceil(filteredShipments.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedShipments = filteredShipments.slice(startIndex, startIndex + itemsPerPage);
-
-  const handleCreateShipment = (e: React.FormEvent) => {
-    e.preventDefault();
-    alert('Shipment akan dibuat dan dicatat di Hyperledger Fabric blockchain!\n\nData akan disimpan di:\n- PostgreSQL (off-chain)\n- Hyperledger Fabric (on-chain)\n\nChaincode: portchain-cc\nFunction: CreateShipment');
-    setShowCreateDialog(false);
-  };
 
   return (
     <div className="space-y-6">
@@ -41,48 +110,11 @@ export function Shipments() {
         </button>
       </div>
 
-      {/* Search Bar */}
-      <div className="bg-white rounded-xl p-6 border border-gray-200">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Cari berdasarkan kode shipment, kapal, eksportir, atau importir..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-      </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl p-4 border border-gray-200">
           <p className="text-xs text-gray-600">Total Shipments</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{mockShipments.length}</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-gray-200">
-          <p className="text-xs text-gray-600">Total Containers</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{mockContainers.length}</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-gray-200">
-          <p className="text-xs text-gray-600">Total Berat</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">
-            {(mockShipments.reduce((acc, s) => acc + s.total_weight_kg, 0) / 1000).toFixed(1)} ton
-          </p>
-        </div>
-        <div className="bg-white rounded-xl p-4 border border-gray-200">
-          <p className="text-xs text-gray-600">Shipment Bulan Ini</p>
-          <p className="text-2xl font-bold text-green-600 mt-1">
-            {mockShipments.filter(s => {
-              const now = new Date();
-              const shipDate = new Date(s.created_at);
-              return shipDate.getMonth() === now.getMonth() && shipDate.getFullYear() === now.getFullYear();
-            }).length}
-          </p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{shipments.length}</p>
         </div>
       </div>
 
@@ -97,15 +129,17 @@ export function Shipments() {
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-600 uppercase">Rute</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-600 uppercase">Eksportir</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-600 uppercase">Importir</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-600 uppercase">Barang</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-600 uppercase">Berat</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-600 uppercase">Status</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-600 uppercase">Tanggal</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {paginatedShipments.map((shipment) => {
-                const containerCount = mockContainers.filter(c => c.shipment_id === shipment.shipment_id).length;
-                return (
+              {isLoading ? (
+                <tr><td colSpan={7} className="px-6 py-4 text-center">Loading...</td></tr>
+              ) : paginatedShipments.length === 0 ? (
+                <tr><td colSpan={7} className="px-6 py-4 text-center">Belum ada data shipment</td></tr>
+              ) : (
+                paginatedShipments.map((shipment) => (
                   <tr key={shipment.shipment_id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
@@ -113,10 +147,6 @@ export function Shipments() {
                         <span className="font-mono font-medium text-blue-600">
                           {shipment.shipment_code}
                         </span>
-                      </div>
-                      <div className="flex items-center gap-1 mt-1">
-                        <Package className="w-3 h-3 text-gray-400" />
-                        <span className="text-xs text-gray-600">{containerCount} container</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -127,54 +157,17 @@ export function Shipments() {
                       <p className="text-sm text-gray-900">{shipment.origin_port}</p>
                       <p className="text-xs text-gray-600">→ {shipment.destination_port}</p>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {shipment.exporter_name}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {shipment.importer_name}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {shipment.goods_description}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-medium text-gray-900">
-                        {shipment.total_weight_kg.toLocaleString()} kg
-                      </span>
-                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{shipment.exporter_name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{shipment.importer_name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{shipment.shipment_status}</td>
                     <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
                       {new Date(shipment.created_at).toLocaleDateString('id-ID')}
                     </td>
                   </tr>
-                );
-              })}
+                ))
+              )}
             </tbody>
           </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-          <p className="text-sm text-gray-600">
-            Menampilkan {startIndex + 1} sampai {Math.min(startIndex + itemsPerPage, filteredShipments.length)} dari {filteredShipments.length} shipment
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <span className="text-sm text-gray-600">
-              Halaman {currentPage} dari {totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
         </div>
       </div>
 
@@ -185,106 +178,106 @@ export function Shipments() {
             <h3 className="text-xl font-bold text-gray-900 mb-4">Buat Shipment Baru</h3>
             
             <form onSubmit={handleCreateShipment} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nama Eksportir
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="PT Export Indonesia"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nama Importir
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="PT Import Indonesia"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Shipping Line
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Maersk"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nama Kapal
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="MV Pacific"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Pelabuhan Asal
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Singapore"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Pelabuhan Tujuan
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Jakarta"
-                    required
-                  />
-                </div>
-              </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Deskripsi Barang
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Kode Shipment</label>
                 <input
                   type="text"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Electronics"
                   required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  value={formData.shipment_code}
+                  onChange={e => setFormData({...formData, shipment_code: e.target.value})}
                 />
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Total Berat (kg)
-                </label>
-                <input
-                  type="number"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="25000"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nama Eksportir</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    value={formData.exporter_name}
+                    onChange={e => setFormData({...formData, exporter_name: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nama Importir</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    value={formData.importer_name}
+                    onChange={e => setFormData({...formData, importer_name: e.target.value})}
+                  />
+                </div>
               </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Shipping Line</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    value={formData.shipping_line_name}
+                    onChange={e => setFormData({...formData, shipping_line_name: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nama Kapal</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    value={formData.vessel_name}
+                    onChange={e => setFormData({...formData, vessel_name: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Pelabuhan Asal</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    value={formData.origin_port}
+                    onChange={e => setFormData({...formData, origin_port: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Pelabuhan Tujuan</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    value={formData.destination_port}
+                    onChange={e => setFormData({...formData, destination_port: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Deskripsi Barang</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    value={formData.goods_description}
+                    onChange={e => setFormData({...formData, goods_description: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Total Berat (kg)</label>
+                  <input
+                    type="number"
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    value={formData.total_weight_kg}
+                    onChange={e => setFormData({...formData, total_weight_kg: e.target.value})}
+                  />
+                </div>
+              </div>
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
                 <p className="text-sm text-blue-800">
                   <strong>Hyperledger Fabric Integration:</strong> Shipment akan dicatat di blockchain dan PostgreSQL database
                 </p>
@@ -302,7 +295,7 @@ export function Shipments() {
                   type="submit"
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
                 >
-                  Buat Shipment
+                  Buat Shipment (Kirim Tx)
                 </button>
               </div>
             </form>
