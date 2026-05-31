@@ -130,6 +130,10 @@ func rpcHandler(w http.ResponseWriter, r *http.Request) {
 		result, errObj = handleGetCustomsClearances()
 	case "GetAuditLogs":
 		result, errObj = handleGetAuditLogs()
+	case "GetDocuments":
+		result, errObj = handleGetDocuments()
+	case "UploadDocument":
+		result, errObj = handleUploadDocument(req.Params)
 	case "SubmitCustomsClearance":
 		result, errObj = handleSubmitCustomsClearance(req.Params)
 	case "UpdateCustomsStatus":
@@ -300,6 +304,95 @@ func handleGetAuditLogs() (interface{}, interface{}) {
 		logs = []map[string]interface{}{}
 	}
 	return logs, nil
+}
+
+func handleGetDocuments() (interface{}, interface{}) {
+	rows, err := db.Query(`
+		SELECT 
+			d.document_id, d.shipment_id, d.document_type, d.document_title, 
+			d.document_version, d.issued_at,
+			h.document_hash_value
+		FROM documents d
+		LEFT JOIN document_hashes h ON d.document_id = h.document_id
+		ORDER BY d.issued_at DESC
+	`)
+	if err != nil {
+		log.Printf("Query Error: %v", err)
+		return nil, map[string]string{"code": "-32002", "message": "Database error"}
+	}
+	defer rows.Close()
+
+	var docs []map[string]interface{}
+	for rows.Next() {
+		var (
+			dID, sID, dType, dTitle, dVer sql.NullString
+			hVal                          sql.NullString
+			issuedAt                      time.Time
+		)
+		if err := rows.Scan(&dID, &sID, &dType, &dTitle, &dVer, &issuedAt, &hVal); err == nil {
+			docs = append(docs, map[string]interface{}{
+				"document_id":         dID.String,
+				"shipment_id":         sID.String,
+				"document_type":       dType.String,
+				"document_title":      dTitle.String,
+				"document_version":    dVer.String,
+				"issued_date":         issuedAt,
+				"document_hash_value": hVal.String,
+			})
+		}
+	}
+	if docs == nil {
+		docs = []map[string]interface{}{}
+	}
+	return docs, nil
+}
+
+func handleUploadDocument(params json.RawMessage) (interface{}, interface{}) {
+	var input struct {
+		ShipmentID       string `json:"shipment_id"`
+		DocumentType     string `json:"document_type"`
+		DocumentCategory string `json:"document_category"` // Maps to document_title for simplicity in UI mapping
+	}
+	if err := json.Unmarshal(params, &input); err != nil {
+		return nil, map[string]string{"code": "-32602", "message": "Invalid params"}
+	}
+
+	docID := "doc-" + uuid.New().String()[:8]
+	txID := uuid.New().String()
+	hashID := "hash-" + uuid.New().String()[:8]
+	docHash := uuid.New().String() // Simulated SHA-256
+
+	// 1. Log to Blockchain Transactions
+	_, err := db.Exec(`
+		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
+		VALUES ($1, $2, 'port-channel', 'portchain-cc', 'UploadDocument', 'VALID')
+	`, txID, uuid.New().String())
+	if err != nil {
+		log.Printf("Blockchain TX Insert Error: %v", err)
+		return nil, map[string]string{"code": "-32001", "message": "Failed to log blockchain tx"}
+	}
+
+	// 2. Insert Document (storing Category in document_title to fulfill mock format)
+	_, err = db.Exec(`
+		INSERT INTO documents (document_id, shipment_id, document_type, document_title, document_version, document_status, issued_at)
+		VALUES ($1, $2, $3, $4, 'v1.0', 'UPLOADED', NOW())
+	`, docID, input.ShipmentID, input.DocumentType, input.DocumentCategory)
+	if err != nil {
+		log.Printf("DB Insert Document Error: %v", err)
+		return nil, map[string]string{"code": "-32001", "message": "Failed to insert document"}
+	}
+
+	// 3. Insert Document Hash
+	_, err = db.Exec(`
+		INSERT INTO document_hashes (document_hash_id, document_id, hash_algorithm, document_hash_value, hash_status, blockchain_tx_id)
+		VALUES ($1, $2, 'SHA-256', $3, 'VERIFIED', $4)
+	`, hashID, docID, docHash, txID)
+	if err != nil {
+		log.Printf("DB Insert Document Hash Error: %v", err)
+		return nil, map[string]string{"code": "-32001", "message": "Failed to insert document hash"}
+	}
+
+	return map[string]interface{}{"success": true, "message": "Document uploaded successfully", "document_id": docID}, nil
 }
 
 func handleSubmitCustomsClearance(params json.RawMessage) (interface{}, interface{}) {

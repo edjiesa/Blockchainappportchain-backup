@@ -1,30 +1,84 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, FileText, Upload, Download, Eye, Hash } from 'lucide-react';
-import { mockDocuments, mockShipments } from '../data/portData';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export function Documents() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [shipments, setShipments] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredDocuments = mockDocuments.filter(doc => {
+  const fetchData = async () => {
+    try {
+      // Fetch Shipments
+      const shipRes = await fetch(`${API_URL}/rpc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'GetAllShipments', params: {}, id: Date.now() })
+      });
+      const shipData = await shipRes.json();
+      if (shipData.result) setShipments(shipData.result);
+
+      // Fetch Documents
+      const docRes = await fetch(`${API_URL}/rpc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'GetDocuments', params: {}, id: Date.now() })
+      });
+      const docData = await docRes.json();
+      if (docData.result) setDocuments(docData.result);
+    } catch (err) {
+      console.error("Failed to fetch data", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const filteredDocuments = documents.filter(doc => {
     const matchesSearch = 
       doc.document_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       doc.document_type.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesCategory = categoryFilter === 'all' || doc.document_category === categoryFilter;
+    const matchesCategory = categoryFilter === 'all' || doc.document_title === categoryFilter;
 
     return matchesSearch && matchesCategory;
   });
 
-  const handleUploadDocument = (e: React.FormEvent) => {
+  const handleUploadDocument = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Dokumen akan di-upload!\n\nProses:\n1. Upload file ke storage\n2. Hash dokumen dengan SHA-256\n3. Store metadata di PostgreSQL\n4. Record hash di Hyperledger Fabric\n5. Chaincode: portchain-cc\n6. Function: UploadDocument');
-    setShowUploadDialog(false);
+    const formData = new FormData(e.target as HTMLFormElement);
+    try {
+      await fetch(`${API_URL}/rpc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'UploadDocument',
+          params: { 
+            shipment_id: formData.get('shipment_id'), 
+            document_type: formData.get('document_type'),
+            document_category: formData.get('document_category')
+          },
+          id: Date.now()
+        })
+      });
+      setShowUploadDialog(false);
+      await fetchData();
+    } catch (err) {
+      console.error("Failed to upload document", err);
+      alert("Failed to upload");
+    }
   };
 
   const categories = ['Shipping', 'Commercial', 'Customs', 'Certificate'];
-  const documentTypes = [...new Set(mockDocuments.map(d => d.document_type))];
+  const documentTypes = ['Bill of Lading', 'Commercial Invoice', 'Packing List', 'Certificate of Origin', 'Customs Declaration', 'Insurance Certificate'];
 
   return (
     <div className="space-y-6">
@@ -74,13 +128,13 @@ export function Documents() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl p-4 border border-gray-200">
           <p className="text-xs text-gray-600">Total Dokumen</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{mockDocuments.length}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1">{documents.length}</p>
         </div>
-        {categories.map(cat => (
+        {categories.slice(0, 3).map(cat => (
           <div key={cat} className="bg-white rounded-xl p-4 border border-gray-200">
             <p className="text-xs text-gray-600">{cat}</p>
             <p className="text-2xl font-bold text-gray-900 mt-1">
-              {mockDocuments.filter(d => d.document_category === cat).length}
+              {documents.filter(d => d.document_title === cat).length}
             </p>
           </div>
         ))}
@@ -88,37 +142,40 @@ export function Documents() {
 
       {/* Documents Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredDocuments.slice(0, 30).map((doc) => {
-          const shipment = mockShipments.find(s => s.shipment_id === doc.shipment_id);
+        {isLoading ? (
+          <div className="col-span-full text-center py-12 text-gray-500">Loading documents...</div>
+        ) : filteredDocuments.slice(0, 30).map((doc) => {
+          const shipment = shipments.find(s => s.shipment_id === doc.shipment_id);
           
           return (
-            <div key={doc.document_id} className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-shadow">
-              <div className="flex items-start gap-3 mb-4">
-                <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                  doc.document_category === 'Shipping' ? 'bg-blue-100' :
-                  doc.document_category === 'Commercial' ? 'bg-green-100' :
-                  doc.document_category === 'Customs' ? 'bg-purple-100' :
-                  'bg-orange-100'
-                }`}>
-                  <FileText className={`w-6 h-6 ${
-                    doc.document_category === 'Shipping' ? 'text-blue-600' :
-                    doc.document_category === 'Commercial' ? 'text-green-600' :
-                    doc.document_category === 'Customs' ? 'text-purple-600' :
-                    'text-orange-600'
-                  }`} />
+            <div key={doc.document_id} className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-shadow flex flex-col justify-between">
+              <div>
+                <div className="flex items-start gap-3 mb-4">
+                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    doc.document_title === 'Shipping' ? 'bg-blue-100' :
+                    doc.document_title === 'Commercial' ? 'bg-green-100' :
+                    doc.document_title === 'Customs' ? 'bg-purple-100' :
+                    'bg-orange-100'
+                  }`}>
+                    <FileText className={`w-6 h-6 ${
+                      doc.document_title === 'Shipping' ? 'text-blue-600' :
+                      doc.document_title === 'Commercial' ? 'text-green-600' :
+                      doc.document_title === 'Customs' ? 'text-purple-600' :
+                      'text-orange-600'
+                    }`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-gray-900 truncate" title={doc.document_type}>{doc.document_type}</h3>
+                    <p className="text-xs text-gray-600 mt-0.5">{doc.document_title}</p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-gray-900 truncate">{doc.document_type}</h3>
-                  <p className="text-xs text-gray-600 mt-0.5">{doc.document_category}</p>
-                </div>
-              </div>
 
               <p className="text-sm text-gray-700 mb-3 line-clamp-2">{doc.document_title}</p>
 
               <div className="space-y-2 mb-4">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-600">Shipment</span>
-                  <span className="font-mono text-blue-600">{shipment?.shipment_code}</span>
+                  <span className="font-mono text-blue-600 truncate max-w-[120px]" title={shipment?.shipment_code || 'N/A'}>{shipment?.shipment_code || 'N/A'}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-600">Version</span>
@@ -130,13 +187,13 @@ export function Documents() {
                 </div>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-3 mb-4">
+              <div className="bg-gray-50 rounded-lg p-3 mb-4 mt-auto">
                 <div className="flex items-center gap-2 mb-1">
                   <Hash className="w-3 h-3 text-gray-500" />
                   <span className="text-xs text-gray-600">Document Hash (on-chain)</span>
                 </div>
-                <p className="font-mono text-xs text-gray-700 break-all">
-                  {Math.random().toString(16).substring(2, 18)}...
+                <p className="font-mono text-xs text-gray-700 break-all bg-white p-2 border border-gray-200 rounded">
+                  {doc.document_hash_value || 'Pending Validation...'}
                 </p>
               </div>
 
@@ -155,7 +212,7 @@ export function Documents() {
         })}
       </div>
 
-      {filteredDocuments.length === 0 && (
+      {!isLoading && filteredDocuments.length === 0 && (
         <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
           <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-600">Tidak ada dokumen ditemukan</p>
@@ -174,11 +231,12 @@ export function Documents() {
                   Shipment ID
                 </label>
                 <select
+                  name="shipment_id"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
                   <option value="">Pilih Shipment</option>
-                  {mockShipments.slice(0, 10).map(ship => (
+                  {shipments.slice(0, 10).map(ship => (
                     <option key={ship.shipment_id} value={ship.shipment_id}>
                       {ship.shipment_code} - {ship.vessel_name}
                     </option>
@@ -191,6 +249,7 @@ export function Documents() {
                   Tipe Dokumen
                 </label>
                 <select
+                  name="document_type"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
@@ -206,6 +265,7 @@ export function Documents() {
                   Kategori
                 </label>
                 <select
+                  name="document_category"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
