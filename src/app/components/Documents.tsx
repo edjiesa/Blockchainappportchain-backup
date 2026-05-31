@@ -80,6 +80,23 @@ export function Documents() {
   const categories = ['Shipping', 'Commercial', 'Customs', 'Certificate'];
   const documentTypes = ['Bill of Lading', 'Commercial Invoice', 'Packing List', 'Certificate of Origin', 'Customs Declaration', 'Insurance Certificate'];
 
+  const handleView = (doc: any) => {
+    alert(`Membuka Dokumen:\n\nJudul: ${doc.document_title}\nTipe: ${doc.document_type}\nHash: ${doc.document_hash_value}`);
+  };
+
+  const handleDownload = (doc: any) => {
+    const content = `PORTCHAIN DOCUMENT RECORD\n========================\n\nTitle: ${doc.document_title}\nType: ${doc.document_type}\nShipment ID: ${doc.shipment_id}\nVersion: ${doc.document_version}\nHash (on-chain): ${doc.document_hash_value}\nIssued At: ${new Date(doc.issued_date).toLocaleString('id-ID')}\n\n* This is a cryptographically verified document from Portchain *`;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${doc.document_type.replace(/\s+/g, '_')}_${doc.document_id}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -197,11 +214,17 @@ export function Documents() {
               </div>
 
               <div className="flex gap-2">
-                <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                <button 
+                  onClick={() => handleView(doc)}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
                   <Eye className="w-4 h-4" />
                   View
                 </button>
-                <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                <button 
+                  onClick={() => handleDownload(doc)}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                >
                   <Download className="w-4 h-4" />
                   Download
                 </button>
