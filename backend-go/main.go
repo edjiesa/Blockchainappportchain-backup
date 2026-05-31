@@ -276,7 +276,17 @@ func handleSubmitCustomsClearance(params json.RawMessage) (interface{}, interfac
 	cID := "cc-" + uuid.New().String()[:8]
 	txID := uuid.New().String()
 
+	// Insert into blockchain_transactions first to satisfy foreign key constraint
 	_, err := db.Exec(`
+		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
+		VALUES ($1, $2, 'port-channel', 'customs-cc', 'SubmitCustomsClearance', 'VALID')
+	`, txID, uuid.New().String())
+	if err != nil {
+		log.Printf("Blockchain TX Insert Error: %v", err)
+		return nil, map[string]string{"code": "-32001", "message": "Failed to log blockchain tx"}
+	}
+
+	_, err = db.Exec(`
 		INSERT INTO customs_clearance (customs_clearance_id, shipment_id, pib_number, customs_status, customs_lane, blockchain_tx_id)
 		VALUES ($1, $2, $3, 'pending', 'YELLOW', $4)
 	`, cID, input.ShipmentID, input.PibNumber, txID)
@@ -284,11 +294,6 @@ func handleSubmitCustomsClearance(params json.RawMessage) (interface{}, interfac
 		log.Printf("DB Insert Error: %v", err)
 		return nil, map[string]string{"code": "-32001", "message": "Failed to insert into database"}
 	}
-
-	db.Exec(`
-		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
-		VALUES ($1, $2, 'port-channel', 'customs-cc', 'SubmitCustomsClearance', 'VALID')
-	`, txID, uuid.New().String())
 
 	return map[string]interface{}{"success": true, "message": "Customs Clearance Submitted", "customs_clearance_id": cID}, nil
 }
@@ -303,7 +308,18 @@ func handleUpdateCustomsStatus(params json.RawMessage) (interface{}, interface{}
 	}
 
 	newTxID := uuid.New().String()
+
+	// Insert into blockchain_transactions first to satisfy foreign key constraint
 	_, err := db.Exec(`
+		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
+		VALUES ($1, $2, 'port-channel', 'customs-cc', 'UpdateCustomsStatus', 'VALID')
+	`, newTxID, uuid.New().String())
+	if err != nil {
+		log.Printf("Blockchain TX Insert Error: %v", err)
+		return nil, map[string]string{"code": "-32001", "message": "Failed to log blockchain tx"}
+	}
+
+	_, err = db.Exec(`
 		UPDATE customs_clearance 
 		SET customs_status = $1, decided_at = NOW(), blockchain_tx_id = $2
 		WHERE customs_clearance_id = $3
@@ -312,11 +328,6 @@ func handleUpdateCustomsStatus(params json.RawMessage) (interface{}, interface{}
 		log.Printf("DB Update Error: %v", err)
 		return nil, map[string]string{"code": "-32001", "message": "Failed to update database"}
 	}
-
-	db.Exec(`
-		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
-		VALUES ($1, $2, 'port-channel', 'customs-cc', 'UpdateCustomsStatus', 'VALID')
-	`, newTxID, uuid.New().String())
 
 	return map[string]interface{}{"success": true, "message": "Status updated successfully"}, nil
 }
