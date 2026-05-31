@@ -710,21 +710,25 @@ func handleGetAllShipments() (interface{}, interface{}) {
 }
 
 func handleGetDashboardStats() (interface{}, interface{}) {
-	var totalShipments, pendingCustoms, totalTransactions int
+	var totalShipments, pendingCustoms, approvedCustoms, totalTransactions, totalDocuments, activeEBLs, channelNodes int
 
 	db.QueryRow("SELECT COUNT(*) FROM shipments").Scan(&totalShipments)
 	db.QueryRow("SELECT COUNT(*) FROM customs_clearance WHERE customs_status = 'PENDING'").Scan(&pendingCustoms)
+	db.QueryRow("SELECT COUNT(*) FROM customs_clearance WHERE customs_status = 'APPROVED'").Scan(&approvedCustoms)
 	db.QueryRow("SELECT COUNT(*) FROM blockchain_transactions").Scan(&totalTransactions)
+	db.QueryRow("SELECT COUNT(*) FROM documents").Scan(&totalDocuments)
+	db.QueryRow("SELECT COUNT(*) FROM ebl_tokens").Scan(&activeEBLs)
+	db.QueryRow("SELECT COUNT(*) FROM organizations").Scan(&channelNodes)
 
 	stats := map[string]interface{}{
 		"totalShipments":    totalShipments,
 		"pendingCustoms":    pendingCustoms,
-		"approvedCustoms":   0,
+		"approvedCustoms":   approvedCustoms,
 		"activeContainers":  0,
-		"totalDocuments":    0,
-		"activeEBLs":        0,
+		"totalDocuments":    totalDocuments,
+		"activeEBLs":        activeEBLs,
 		"totalTransactions": totalTransactions,
-		"channelNodes":      3,
+		"channelNodes":      channelNodes,
 	}
 
 	return stats, nil

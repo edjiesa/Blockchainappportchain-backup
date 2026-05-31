@@ -12,7 +12,7 @@ import {
   Clock,
   AlertCircle
 } from 'lucide-react';
-import { mockDashboardStats, mockShipments, mockCustomsClearance, mockShipmentTrends, mockCustomsStats } from '../data/portData';
+import { mockShipmentTrends, mockCustomsStats } from '../data/portData';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export function Dashboard() {
@@ -26,6 +26,7 @@ export function Dashboard() {
     channelNodes: 3,
     totalTransactions: 0
   });
+  const [allShipments, setAllShipments] = useState<any[]>([]);
   const [recentShipments, setRecentShipments] = useState<any[]>([]);
   const [recentCustoms, setRecentCustoms] = useState<any[]>([]);
 
@@ -49,7 +50,18 @@ export function Dashboard() {
         });
         const shipData = await responseShipments.json();
         if (shipData.result) {
+          setAllShipments(shipData.result);
           setRecentShipments(shipData.result.slice(0, 5));
+        }
+
+        const responseCustoms = await fetch('http://localhost:3001/rpc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: "2.0", method: "GetCustomsClearances", params: {}, id: 3 })
+        });
+        const customData = await responseCustoms.json();
+        if (customData.result) {
+          setRecentCustoms(customData.result.slice(0, 5));
         }
       } catch (e) {
         console.error(e);
@@ -282,7 +294,7 @@ export function Dashboard() {
           </div>
           <div className="divide-y divide-gray-200">
             {recentCustoms.map((customs) => {
-              const shipment = mockShipments.find(s => s.shipment_id === customs.shipment_id);
+              const shipment = allShipments.find(s => s.shipment_id === customs.shipment_id);
               return (
                 <div key={customs.customs_clearance_id} className="p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-start justify-between">
@@ -293,16 +305,14 @@ export function Dashboard() {
                         </span>
                       </div>
                       <p className="text-xs text-gray-600 mt-1">
-                        {shipment?.shipment_code}
+                        {shipment?.shipment_code || 'N/A'}
                       </p>
                       <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-2 ${
-                        customs.customs_status === 'approved' 
+                        customs.customs_status === 'APPROVED' 
                           ? 'bg-green-100 text-green-800'
-                          : customs.customs_status === 'pending'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : customs.customs_status === 'inspection'
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-red-100 text-red-800'
+                          : customs.customs_status === 'REJECTED'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-yellow-100 text-yellow-800'
                       }`}>
                         {customs.customs_status}
                       </span>
