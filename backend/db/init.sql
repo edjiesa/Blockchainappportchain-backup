@@ -1,7 +1,9 @@
 -- =====================================================
 -- PortChain Off-Chain Database Schema (PostgreSQL)
--- Menyimpan data operasional yang tidak perlu di-chain
 -- =====================================================
+
+-- Extension for AES-256 encryption
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Organizations
 CREATE TABLE IF NOT EXISTS organizations (
@@ -104,6 +106,21 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     blockchain_tx_id VARCHAR(200),
     sync_status      VARCHAR(20) DEFAULT 'synced'
 );
+
+-- pgAudit Simulation via Trigger
+CREATE OR REPLACE FUNCTION notify_pgaudit_event() RETURNS TRIGGER AS $$
+DECLARE
+  payload TEXT;
+BEGIN
+  payload := '{"table": "' || TG_TABLE_NAME || '", "action": "' || TG_OP || '", "timestamp": "' || CURRENT_TIMESTAMP || '"}';
+  PERFORM pg_notify('pgaudit_events', payload);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER audit_shipments_trigger
+AFTER INSERT OR UPDATE OR DELETE ON shipments
+FOR EACH ROW EXECUTE FUNCTION notify_pgaudit_event();
 
 -- =====================================================
 -- Seed Data Awal (Organisasi Port Indonesia)

@@ -8,7 +8,7 @@ services:
       - "8080:8080"
       - "3001:3001"
     environment:
-      - MICROFAB_CONFIG={"endorsing_organizations":[{"name":"org1"}],"channels":[{"name":"mychannel","endorsing_organizations":["org1"]}],"capability_level":"V2_0"}
+      - MICROFAB_CONFIG={"endorsing_organizations":[{"name":"portorg"},{"name":"customsorg"},{"name":"bankorg"}],"channels":[{"name":"mychannel","endorsing_organizations":["portorg","customsorg","bankorg"]}],"capability_level":"V2_0"}
 
   # 2. DATABASE OFF-CHAIN - PostgreSQL
   postgres:
@@ -29,20 +29,31 @@ services:
       timeout: 5s
       retries: 5
 
-  # 3. BACKEND API - Node.js Express (shares microfab network)
+  # 3. BACKEND API - Go (Golang) Middleware
   backend:
     build:
-      context: ../backend
+      context: ../backend-go
       dockerfile: Dockerfile
-    container_name: fabric-backend
+    container_name: fabric-backend-go
     network_mode: "service:microfab"
     environment:
       - MICROFAB_URL=http://127.0.0.1:8080
-      - DATABASE_URL=postgresql://portchain:portchain123@portchain-db:5432/portchain_offchain
-      - NODE_ENV=development
+      - DATABASE_URL=postgres://portchain:portchain123@127.0.0.1:5432/portchain_offchain?sslmode=disable
+      - EXTERNAL_BANK_URL=http://127.0.0.1:4000
     depends_on:
       postgres:
         condition: service_healthy
+
+  # 3b. EXTERNAL TIER - Bank Integration Mock
+  external-bank:
+    image: node:20-alpine
+    container_name: external-bank-mock
+    network_mode: "service:microfab"
+    working_dir: /app
+    volumes:
+      - ../external-bank:/app
+    command: sh -c "npm install && npm start"
+
 
   # 4. FRONTEND - React Vite (Hot-Reload)
   frontend:

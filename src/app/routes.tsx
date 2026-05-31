@@ -8,6 +8,8 @@ import { EBLManagement } from "./components/EBLManagement";
 import { Organizations } from "./components/Organizations";
 import { BlockchainExplorer } from "./components/BlockchainExplorer";
 import { AuditTrail } from "./components/AuditTrail";
+import { HardwareWallet } from "./components/HardwareWallet";
+import { ScannerTools } from "./components/ScannerTools";
 
 export const router = createBrowserRouter([
   {
@@ -45,6 +47,14 @@ export const router = createBrowserRouter([
       { 
         path: "audit", 
         Component: AuditTrail 
+      },
+      { 
+        path: "wallet", 
+        Component: HardwareWallet 
+      },
+      { 
+        path: "scanner", 
+        Component: ScannerTools 
       },
     ],
   },

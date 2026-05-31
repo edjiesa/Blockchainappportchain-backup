@@ -1,0 +1,13 @@
+{
+  "name": "payment-contract",
+  "version": "1.0.0",
+  "description": "Smart Contract for Banking Organization",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "fabric-contract-api": "^2.4.1",
+    "fabric-shim": "^2.4.1"
+  }
+}

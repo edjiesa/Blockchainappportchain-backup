@@ -1,39 +1,36 @@
-# ⚓ PortChain — Blockchain Port Licensing System
+# ⚓ PortChain — Enterprise Blockchain Port System
 
-> Sistem perizinan pelabuhan berbasis **Hyperledger Fabric** dengan penyimpanan off-chain **PostgreSQL**, backend **Node.js Express**, dan frontend **React + Vite**.
+> Sistem perizinan pelabuhan berarsitektur Enterprise berbasis **Hyperledger Fabric Multi-Org (Port, Customs, Bank)** dengan penyimpanan off-chain **PostgreSQL (pgAudit & AES-256)**, **Go (Golang) Middleware (JSON-RPC)**, integrasi **External Bank Tier**, dan frontend **React + Vite**.
 
-![Hyperledger Fabric](https://img.shields.io/badge/Hyperledger%20Fabric-2.0-blue?logo=hyperledger)
+![Hyperledger Fabric](https://img.shields.io/badge/Hyperledger%20Fabric-MultiOrg-blue?logo=hyperledger)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white)
-![Node.js](https://img.shields.io/badge/Node.js-20-339933?logo=node.js&logoColor=white)
+![Go](https://img.shields.io/badge/Go-1.22-00ADD8?logo=go&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 
 ---
 
-## 🏗️ Arsitektur Sistem
+## 🏗️ Arsitektur Sistem (Deployment Diagram)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                     Windows Host                        │
+│                     Client Side                         │
 │                                                         │
-│  Browser → http://localhost:5173 (React + Vite)         │
-│         → http://localhost:3001  (Backend REST API)     │
-│         → http://localhost:8080  (Microfab Dashboard)   │
-│         → localhost:5432         (PostgreSQL)           │
-│                                                         │
+│  Browser/Scanner/HW Wallet → http://localhost:5173      │
+│         ↓ JSON-RPC (HTTPS / TLS 1.3)                    │
 │  ┌──────────────────────────────────────────────────┐   │
-│  │               Docker Compose Stack               │   │
+│  │         Application Server (Docker)              │   │
 │  │                                                  │   │
 │  │  ┌─────────────┐    ┌──────────────────────┐    │   │
-│  │  │   microfab  │←───│   fabric-backend     │    │   │
-│  │  │ (Fabric Node│    │  (Node.js Express    │    │   │
-│  │  │  port 8080) │    │   port 3001)         │    │   │
+│  │  │   microfab  │←───│   fabric-backend-go  │←───┤   │
+│  │  │ (3 Orgs,    │    │  (Go API Gateway &   │    │   │
+│  │  │  Raft)      │    │   Logic Layer)       │    │   │
 │  │  └─────────────┘    └──────────┬───────────┘    │   │
-│  │                                │                  │   │
+│  │                                │ pg_notify      │   │
 │  │  ┌─────────────┐    ┌──────────▼───────────┐    │   │
-│  │  │react-frontend│   │   portchain-db       │    │   │
-│  │  │ (Vite HMR   │   │ (PostgreSQL 16        │    │   │
-│  │  │  port 5173) │   │  port 5432)           │    │   │
+│  │  │external-bank│←───│   portchain-db       │    │   │
+│  │  │ (Mock Tier) │    │ (PostgreSQL 16       │    │   │
+│  │  │             │    │  w/ pgcrypto AES-256)│    │   │
 │  │  └─────────────┘    └──────────────────────┘    │   │
 │  └──────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────┘
@@ -41,12 +38,13 @@
 
 ### Komponen Utama
 
-| Layanan | Teknologi | Port | Fungsi |
-|---------|-----------|------|--------|
-| `microfab` | IBM Microfab (Hyperledger Fabric v2.0) | 8080, 3001 | Blockchain Node — menyimpan transaksi immutable |
-| `fabric-backend` | Node.js 20 + Express | 3001 | REST API — jembatan antara frontend & blockchain/DB |
-| `portchain-db` | PostgreSQL 16 | 5432 | Off-chain DB — data operasional & historis |
-| `react-frontend` | React 18 + Vite 6 | 5173 | UI Dashboard — visualisasi data port |
+| Node | Teknologi | Keterangan Fungsional |
+|---------|-----------|--------|
+| `Client Side` | React + WebUSB | Antarmuka pengguna (Dashboard, Scanner Tools, HW Wallet). |
+| `microfab` | IBM Microfab | Permissioned Blockchain Network (Port, Customs, Bank Org). |
+| `fabric-backend-go` | Go 1.22 | Middleware (API Gateway, Logic Layer, Go Listener/pgAudit). |
+| `portchain-db` | PostgreSQL 16 | Off-chain data & Audit Logs terpusat, dengan fungsi Enkripsi. |
+| `external-bank` | Node.js (Mock) | Sistem Eksternal pihak ke-3 untuk mengeksekusi Payment Contract. |
 
 ---
 
@@ -78,6 +76,8 @@ Atau langsung dengan Docker Compose:
 cd fabric-local
 docker-compose up -d --build
 ```
+
+> ⚠️ **Catatan Penting:** Karena ini adalah arsitektur baru (Go Backend & 3-Org Fabric), Anda diwajibkan menggunakan `--build` untuk mengkompilasi Go binary dan me-reset kontainer lama.
 
 > ⏳ **Pertama kali** butuh waktu **5-10 menit** untuk download image dan install dependencies.
 > Selanjutnya hanya perlu **30-60 detik**.
@@ -126,29 +126,30 @@ Blockchainappportchain/
 │   ├── stop-fabric.ps1           # Script shutdown
 │   └── README.md                 # Dokumentasi teknis jaringan
 │
-├── 📂 backend/                   # Node.js API Server
-│   ├── server.js                 # Express server + 8 REST endpoints
-│   ├── fabric-connector.js       # Koneksi ke Hyperledger Fabric Gateway
-│   ├── package.json              # Dependencies (express, pg, fabric-network)
-│   ├── Dockerfile                # Container image backend
-│   └── db/
-│       ├── init.sql              # Schema PostgreSQL + seed data
-│       └── db.js                 # PostgreSQL connection pool
+├── 📂 backend-go/                # Go (Golang) Middleware
+│   ├── main.go                   # API Gateway (JSON-RPC) & Go Listener (pgAudit)
+│   ├── go.mod                    # Dependencies
+│   └── Dockerfile                # Build instruksi Go
 │
-└── 📂 src/                       # React Frontend (Vite)
+├── 📂 external-bank/             # External Tier (Sistem Eksternal Bank)
+│   ├── server.js                 # Layanan verifikasi Bank mock
+│   └── package.json              
+│
+├── 📂 backend/db/                # Database Server (PostgreSQL)
+│   └── init.sql                  # Schema, pgcrypto, dan Triggers
+│
+├── 📂 chaincode/                 # Smart Contracts
+│   └── payment-contract/         # Logika pembayaran via Banking Org
+│
+└── 📂 src/                       # Client Side (React)
     ├── app/
-    │   ├── components/           # Halaman-halaman UI
+    │   ├── components/           
+    │   │   ├── ScannerTools.tsx       # Antarmuka Scanner OCR & QR
+    │   │   ├── HardwareWallet.tsx     # Otorisasi USB/Bluetooth
     │   │   ├── Dashboard.tsx
-    │   │   ├── Shipments.tsx
-    │   │   ├── CustomsClearance.tsx
-    │   │   ├── Documents.tsx
-    │   │   ├── EBLManagement.tsx
-    │   │   ├── Organizations.tsx
-    │   │   ├── BlockchainExplorer.tsx
-    │   │   └── AuditTrail.tsx
-    │   ├── data/portData.ts      # Mock data & tipe data
-    │   └── routes.tsx            # React Router konfigurasi
-    └── main.tsx                  # Entry point aplikasi
+    │   │   └── BlockchainExplorer.tsx # Mini Explorer
+    │   └── routes.tsx            
+    └── main.tsx
 ```
 
 ---
