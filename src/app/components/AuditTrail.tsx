@@ -1,19 +1,51 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, FileCheck, User, Clock, Database, CheckCircle, AlertCircle } from 'lucide-react';
-import { mockAuditLogs, mockUsers } from '../data/portData';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export function AuditTrail() {
   const [searchTerm, setSearchTerm] = useState('');
   const [syncFilter, setSyncFilter] = useState<string>('all');
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredLogs = mockAuditLogs.filter(log => {
-    const user = mockUsers.find(u => u.user_id === log.user_id);
+  const fetchLogs = async () => {
+    try {
+      const res = await fetch(`${API_URL}/rpc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'GetAuditLogs', params: {}, id: Date.now() })
+      });
+      const data = await res.json();
+      if (data.result) {
+        // Map from blockchain_transactions to UI format
+        const formatted = data.result.map((log: any) => ({
+          blockchain_tx_id: log.blockchain_tx_id,
+          transaction_type: log.transaction_type,
+          channel_name: log.channel_name,
+          chaincode_name: log.chaincode_name,
+          validation_status: log.validation_status === 'VALID' ? 'synced' : 'pending',
+          created_at: log.created_at
+        }));
+        setAuditLogs(formatted);
+      }
+    } catch (err) {
+      console.error("Failed to fetch audit logs", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  const filteredLogs = auditLogs.filter(log => {
     const matchesSearch = 
-      log.action_description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user?.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.entity_id.toLowerCase().includes(searchTerm.toLowerCase());
+      log.transaction_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.channel_name.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesSync = syncFilter === 'all' || log.sync_status === syncFilter;
+    const matchesSync = syncFilter === 'all' || log.validation_status === syncFilter;
 
     return matchesSearch && matchesSync;
   });
@@ -74,7 +106,7 @@ export function AuditTrail() {
             </div>
             <div>
               <p className="text-xs text-gray-600">Total Logs</p>
-              <p className="text-2xl font-bold text-gray-900">{mockAuditLogs.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{auditLogs.length}</p>
             </div>
           </div>
         </div>
@@ -87,7 +119,7 @@ export function AuditTrail() {
             <div>
               <p className="text-xs text-gray-600">Synced</p>
               <p className="text-2xl font-bold text-green-600">
-                {mockAuditLogs.filter(l => l.sync_status === 'synced').length}
+                {auditLogs.filter(l => l.validation_status === 'synced').length}
               </p>
             </div>
           </div>
@@ -101,7 +133,7 @@ export function AuditTrail() {
             <div>
               <p className="text-xs text-gray-600">Pending</p>
               <p className="text-2xl font-bold text-yellow-600">
-                {mockAuditLogs.filter(l => l.sync_status === 'pending').length}
+                {auditLogs.filter(l => l.validation_status === 'pending').length}
               </p>
             </div>
           </div>
@@ -113,9 +145,9 @@ export function AuditTrail() {
               <User className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-xs text-gray-600">Active Users</p>
+              <p className="text-xs text-gray-600">Active Chaincodes</p>
               <p className="text-2xl font-bold text-blue-600">
-                {new Set(mockAuditLogs.map(l => l.user_id)).size}
+                {new Set(auditLogs.map(l => l.chaincode_name)).size}
               </p>
             </div>
           </div>
@@ -126,11 +158,11 @@ export function AuditTrail() {
       <div className="bg-white rounded-xl p-6 border border-gray-200">
         <h3 className="text-lg font-bold text-gray-900 mb-6">Activity Timeline</h3>
         <div className="space-y-4">
-          {filteredLogs.map((log) => {
-            const user = mockUsers.find(u => u.user_id === log.user_id);
-            
+          {isLoading ? (
+            <div className="text-center py-12 text-gray-500">Loading audit logs...</div>
+          ) : filteredLogs.map((log) => {
             return (
-              <div key={log.audit_log_id} className="relative pl-8 pb-4 border-l-2 border-gray-200 last:border-l-0">
+              <div key={log.blockchain_tx_id} className="relative pl-8 pb-4 border-l-2 border-gray-200 last:border-l-0">
                 <div className="absolute -left-2 top-0 w-4 h-4 rounded-full bg-blue-600 border-2 border-white"></div>
                 
                 <div className="bg-gray-50 rounded-lg p-4">
@@ -138,70 +170,49 @@ export function AuditTrail() {
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
                         <span className="text-white text-xs font-bold">
-                          {user?.username.substring(0, 2).toUpperCase() || 'SY'}
+                          {'SYS'}
                         </span>
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{log.action_description}</p>
+                        <p className="font-medium text-gray-900">{log.transaction_type}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <User className="w-3 h-3 text-gray-500" />
                           <span className="text-xs text-gray-600">
-                            {user?.username || 'System'} ({user?.role_name || 'System'})
+                            System
                           </span>
                         </div>
                       </div>
                     </div>
                     <span className={`px-2 py-1 rounded text-xs font-medium flex items-center gap-1 ${
-                      log.sync_status === 'synced'
+                      log.validation_status === 'synced'
                         ? 'bg-green-100 text-green-800'
                         : 'bg-yellow-100 text-yellow-800'
                     }`}>
-                      {log.sync_status === 'synced' ? (
+                      {log.validation_status === 'synced' ? (
                         <CheckCircle className="w-3 h-3" />
                       ) : (
                         <Clock className="w-3 h-3" />
                       )}
-                      {log.sync_status}
+                      {log.validation_status}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 text-sm">
                     <div>
-                      <p className="text-gray-600 text-xs">Entity ID</p>
-                      <p className="font-mono text-xs text-gray-900 mt-0.5">{log.entity_id}</p>
+                      <p className="text-gray-600 text-xs">Channel Name</p>
+                      <p className="font-mono text-xs text-gray-900 mt-0.5">{log.channel_name}</p>
                     </div>
                     <div>
-                      <p className="text-gray-600 text-xs">Actor Type</p>
-                      <p className="text-gray-900 mt-0.5">{log.actor_type}</p>
+                      <p className="text-gray-600 text-xs">Chaincode Name</p>
+                      <p className="text-gray-900 mt-0.5">{log.chaincode_name}</p>
                     </div>
                     <div>
                       <p className="text-gray-600 text-xs">Timestamp</p>
                       <p className="text-gray-900 mt-0.5">
-                        {new Date(log.action_timestamp).toLocaleString('id-ID')}
+                        {new Date(log.created_at).toLocaleString('id-ID')}
                       </p>
                     </div>
                   </div>
-
-                  {(log.old_value || log.new_value) && (
-                    <div className="mt-3 pt-3 border-t border-gray-200 grid grid-cols-2 gap-3">
-                      {log.old_value && (
-                        <div>
-                          <p className="text-xs text-gray-600 mb-1">Old Value</p>
-                          <code className="text-xs bg-white p-2 rounded border border-gray-200 block">
-                            {log.old_value}
-                          </code>
-                        </div>
-                      )}
-                      {log.new_value && (
-                        <div>
-                          <p className="text-xs text-gray-600 mb-1">New Value</p>
-                          <code className="text-xs bg-white p-2 rounded border border-gray-200 block">
-                            {log.new_value}
-                          </code>
-                        </div>
-                      )}
-                    </div>
-                  )}
 
                   <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -229,12 +240,12 @@ export function AuditTrail() {
       <div className="bg-white rounded-xl p-6 border border-gray-200">
         <h3 className="text-lg font-bold text-gray-900 mb-4">Distribusi Jenis Aksi</h3>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {Array.from(new Set(mockAuditLogs.map(l => l.action_description))).map(action => {
-            const count = mockAuditLogs.filter(l => l.action_description === action).length;
+          {Array.from(new Set(auditLogs.map(l => l.transaction_type))).map(action => {
+            const count = auditLogs.filter(l => l.transaction_type === action).length;
             return (
-              <div key={action} className="text-center p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg">
+              <div key={action as string} className="text-center p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg">
                 <p className="text-xl font-bold text-gray-900">{count}</p>
-                <p className="text-xs text-gray-600 mt-1">{action}</p>
+                <p className="text-xs text-gray-600 mt-1">{action as string}</p>
               </div>
             );
           })}

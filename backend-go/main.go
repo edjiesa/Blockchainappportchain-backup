@@ -128,6 +128,8 @@ func rpcHandler(w http.ResponseWriter, r *http.Request) {
 		result, errObj = handleGetUsers()
 	case "GetCustomsClearances":
 		result, errObj = handleGetCustomsClearances()
+	case "GetAuditLogs":
+		result, errObj = handleGetAuditLogs()
 	case "SubmitCustomsClearance":
 		result, errObj = handleSubmitCustomsClearance(req.Params)
 	case "UpdateCustomsStatus":
@@ -262,6 +264,42 @@ func handleGetCustomsClearances() (interface{}, interface{}) {
 		clearances = []map[string]interface{}{}
 	}
 	return clearances, nil
+}
+
+func handleGetAuditLogs() (interface{}, interface{}) {
+	rows, err := db.Query(`
+		SELECT blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status, created_at
+		FROM blockchain_transactions 
+		ORDER BY created_at DESC
+	`)
+	if err != nil {
+		log.Printf("Query Error: %v", err)
+		return nil, map[string]string{"code": "-32002", "message": "Database error"}
+	}
+	defer rows.Close()
+
+	var logs []map[string]interface{}
+	for rows.Next() {
+		var (
+			bTxID, txID, channel, chaincode, txType, status sql.NullString
+			createdAt                                       time.Time
+		)
+		if err := rows.Scan(&bTxID, &txID, &channel, &chaincode, &txType, &status, &createdAt); err == nil {
+			logs = append(logs, map[string]interface{}{
+				"blockchain_tx_id": bTxID.String,
+				"tx_id":            txID.String,
+				"channel_name":     channel.String,
+				"chaincode_name":   chaincode.String,
+				"transaction_type": txType.String,
+				"validation_status": status.String,
+				"created_at":       createdAt,
+			})
+		}
+	}
+	if logs == nil {
+		logs = []map[string]interface{}{}
+	}
+	return logs, nil
 }
 
 func handleSubmitCustomsClearance(params json.RawMessage) (interface{}, interface{}) {
