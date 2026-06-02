@@ -99,8 +99,8 @@ class FabricConnector {
             }
         };
 
-        const peers = components.filter(c => c.type === 'peer');
-        const orderers = components.filter(c => c.type === 'orderer');
+        const peers = components.filter(c => c.type === 'fabric-peer');
+        const orderers = components.filter(c => c.type === 'fabric-orderer');
         
         let orgMsp = null;
 
@@ -170,7 +170,7 @@ class FabricConnector {
         });
 
         // Log ccp for debugging
-        console.log("GENERATED CCP:", JSON.stringify(ccp, null, 2));
+        require('fs').writeFileSync('/app/ccp_debug.json', JSON.stringify(ccp, null, 2));
 
         return ccp;
     }
