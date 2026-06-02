@@ -51,6 +51,8 @@ services:
     image: node:20-alpine
     container_name: fabric-connector
     network_mode: "service:microfab"
+    environment:
+      - DATABASE_URL=postgres://portchain:portchain123@postgres:5432/portchain_offchain?sslmode=disable
     working_dir: /app
     volumes:
       - ../backend:/app
