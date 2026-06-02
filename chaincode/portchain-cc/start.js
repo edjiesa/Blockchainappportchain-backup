@@ -3,4 +3,4 @@ if (!Object.hasOwn) {
         return Object.prototype.hasOwnProperty.call(obj, prop);
     };
 }
-require('fabric-shim/cli').main();
+require('fabric-shim/cli');
