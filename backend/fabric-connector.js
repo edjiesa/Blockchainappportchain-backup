@@ -57,7 +57,7 @@ class FabricConnector {
             await this.gateway.connect(ccp, {
                 wallet,
                 identity: this.identityLabel,
-                discovery: { enabled: true, asLocalhost: false }
+                discovery: { enabled: false, asLocalhost: false }
             });
 
             console.log("Koneksi Gateway Berhasil!");
