@@ -230,6 +230,15 @@ func handleSmartContractForwarding(method string, params json.RawMessage) (inter
 		return nil, map[string]string{"code": "-32002", "message": "Invalid JSON response from Fabric Connector"}
 	}
 
+	// Cek jika HTTP status bukan 200 OK
+	if resp.StatusCode != http.StatusOK {
+		errMsg := "Fabric Gateway Error"
+		if e, ok := fabricResp["error"].(string); ok {
+			errMsg = e
+		}
+		return nil, map[string]string{"code": "-32003", "message": errMsg}
+	}
+
 	if success, ok := fabricResp["success"].(bool); ok && !success {
 		errMsg := "Unknown Fabric Error"
 		if e, ok := fabricResp["error"].(string); ok {

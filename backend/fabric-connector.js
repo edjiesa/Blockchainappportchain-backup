@@ -32,10 +32,10 @@ class FabricConnector {
                 throw new Error("Tidak menemukan Identity (Sertifikat Kriptografi) di Microfab!");
             }
 
-            const adminIdentity = identities.find(id => id.id.includes('org1admin'));
+            const adminIdentity = identities.find(id => id.id.includes('portorgadmin'));
             
             if (!adminIdentity) {
-                 throw new Error("Identity untuk org1admin tidak ditemukan.");
+                 throw new Error("Identity untuk portorgadmin tidak ditemukan.");
             }
 
             // Masukkan sertifikat ke dalam wallet lokal di memory
