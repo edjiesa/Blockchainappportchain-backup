@@ -140,7 +140,7 @@ class FabricConnector {
         });
         
         if (orgMsp) {
-             ccp.client.organization = orgMsp;
+             ccp.client.organization = "portorgMSP";
         }
 
         // Memetakan Orderers
