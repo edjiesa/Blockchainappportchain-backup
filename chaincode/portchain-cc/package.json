@@ -1,10 +1,10 @@
 {
   "name": "portchain-cc",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "PortChain Unified Smart Contract",
   "main": "index.js",
   "scripts": {
-    "start": "node start.js"
+    "start": "node start.js start"
   },
   "engines": {
     "node": ">=20.0.0"
