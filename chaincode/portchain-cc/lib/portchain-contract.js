@@ -8,14 +8,12 @@ class PortchainContract extends Contract {
     // 15. ACCESS CONTROL (70-73)
     // ==========================================
     async CheckPermission(ctx, requiredRole) {
-        // Implementasi ACL sederhana
         const clientMSPID = ctx.clientIdentity.getMSPID();
         if (!clientMSPID) throw new Error('Unauthenticated user');
         return true;
     }
 
     async OnlyAdmin(ctx) {
-        // Role validasi (Placeholder)
         const msp = ctx.clientIdentity.getMSPID();
         if (msp !== 'portorg') throw new Error('Access Denied: Only Admin (Port Org)');
     }
@@ -189,7 +187,23 @@ class PortchainContract extends Contract {
         return await this._getState(ctx, `CONTAINER_${containerId}`);
     }
 
-    async GetContainersByShipment(ctx, shipmentId) { return "[]"; }
+    async GetContainersByShipment(ctx, shipmentId) {
+        const iterator = await ctx.stub.getStateByRange('CONTAINER_', 'CONTAINER_~');
+        const allResults = [];
+        while (true) {
+            const res = await iterator.next();
+            if (res.value && res.value.value.toString()) {
+                const Record = JSON.parse(res.value.value.toString('utf8'));
+                if (Record.shipmentId === shipmentId) {
+                    allResults.push(Record);
+                }
+            }
+            if (res.done) {
+                await iterator.close();
+                return JSON.stringify(allResults);
+            }
+        }
+    }
     
     async UpdateContainer(ctx, containerId, newType) {
         const container = await this.GetContainer(ctx, containerId);
@@ -215,7 +229,23 @@ class PortchainContract extends Contract {
         return await this._getState(ctx, `DOC_${documentId}`);
     }
 
-    async GetDocumentsByShipment(ctx, shipmentId) { return "[]"; }
+    async GetDocumentsByShipment(ctx, shipmentId) {
+        const iterator = await ctx.stub.getStateByRange('DOC_', 'DOC_~');
+        const allResults = [];
+        while (true) {
+            const res = await iterator.next();
+            if (res.value && res.value.value.toString()) {
+                const Record = JSON.parse(res.value.value.toString('utf8'));
+                if (Record.shipmentId === shipmentId) {
+                    allResults.push(Record);
+                }
+            }
+            if (res.done) {
+                await iterator.close();
+                return JSON.stringify(allResults);
+            }
+        }
+    }
     
     async UpdateDocument(ctx, documentId, title) {
         const doc = await this.GetDocument(ctx, documentId);
@@ -238,9 +268,31 @@ class PortchainContract extends Contract {
     }
     
     async GetDocumentFile(ctx, fileId) { return await this._getState(ctx, `FILE_${fileId}`); }
-    async GenerateDocumentHash(ctx, fileId) { return "generated_hash_placeholder"; }
+    
+    async GenerateDocumentHash(ctx, fileId) { 
+        // Dummy implementation for generating hash based on fileId
+        return `hash_${fileId}_` + Math.random().toString(36).substring(7);
+    }
+    
     async GetDocumentHash(ctx, hashId) { return await this._getState(ctx, `HASH_${hashId}`); }
-    async VerifyDocumentHash(ctx, documentId, providedHash) { return true; }
+    
+    async VerifyDocumentHash(ctx, documentId, providedHash) { 
+        const iterator = await ctx.stub.getStateByRange('HASH_', 'HASH_~');
+        while (true) {
+            const res = await iterator.next();
+            if (res.value && res.value.value.toString()) {
+                const Record = JSON.parse(res.value.value.toString('utf8'));
+                if (Record.documentId === documentId && Record.hashValue === providedHash) {
+                    await iterator.close();
+                    return true;
+                }
+            }
+            if (res.done) {
+                await iterator.close();
+                return false;
+            }
+        }
+    }
     
     async RecordHashToBlockchain(ctx, hashId, documentId, hashValue) {
         const hash = { hashId, documentId, hashValue, docType: 'documentHash' };
@@ -263,7 +315,24 @@ class PortchainContract extends Contract {
     }
     async ApproveCustoms(ctx, clearanceId) { return await this.UpdateCustomsStatus(ctx, clearanceId, 'APPROVED'); }
     async RejectCustoms(ctx, clearanceId) { return await this.UpdateCustomsStatus(ctx, clearanceId, 'REJECTED'); }
-    async GetCustomsByShipment(ctx, shipmentId) { return "[]"; }
+    
+    async GetCustomsByShipment(ctx, shipmentId) {
+        const iterator = await ctx.stub.getStateByRange('CUSTOMS_', 'CUSTOMS_~');
+        const allResults = [];
+        while (true) {
+            const res = await iterator.next();
+            if (res.value && res.value.value.toString()) {
+                const Record = JSON.parse(res.value.value.toString('utf8'));
+                if (Record.shipmentId === shipmentId) {
+                    allResults.push(Record);
+                }
+            }
+            if (res.done) {
+                await iterator.close();
+                return JSON.stringify(allResults);
+            }
+        }
+    }
 
     // ==========================================
     // 7. CERTIFICATE (38-42)
@@ -273,34 +342,107 @@ class PortchainContract extends Contract {
         return await this._putState(ctx, `CERT_${certId}`, cert);
     }
     async GetCertificate(ctx, certId) { return await this._getState(ctx, `CERT_${certId}`); }
-    async ValidateCertificate(ctx, certId) { return true; }
+    async ValidateCertificate(ctx, certId) { 
+        const cert = await this.GetCertificate(ctx, certId);
+        return cert && cert.status === 'VALID';
+    }
     async RevokeCertificate(ctx, certId) {
         const cert = await this.GetCertificate(ctx, certId);
         cert.status = 'REVOKED';
         return await this._putState(ctx, `CERT_${certId}`, cert);
     }
-    async GetCertificatesByUser(ctx, userId) { return "[]"; }
+    async GetCertificatesByUser(ctx, userId) {
+        const iterator = await ctx.stub.getStateByRange('CERT_', 'CERT_~');
+        const allResults = [];
+        while (true) {
+            const res = await iterator.next();
+            if (res.value && res.value.value.toString()) {
+                const Record = JSON.parse(res.value.value.toString('utf8'));
+                if (Record.userId === userId) {
+                    allResults.push(Record);
+                }
+            }
+            if (res.done) {
+                await iterator.close();
+                return JSON.stringify(allResults);
+            }
+        }
+    }
 
     // ==========================================
     // 8. CONTAINER STATUS LOG (43-45)
     // ==========================================
     async LogContainerStatus(ctx, logId, containerId, statusCode, location) {
-        const log = { logId, containerId, statusCode, location, docType: 'statusLog' };
+        const log = { logId, containerId, statusCode, location, timestamp: new Date().toISOString(), docType: 'statusLog' };
         return await this._putState(ctx, `LOG_${logId}`, log);
     }
-    async GetContainerHistory(ctx, containerId) { return "[]"; }
-    async VerifyContainerStatus(ctx, containerId) { return true; }
+    async GetContainerHistory(ctx, containerId) {
+        const iterator = await ctx.stub.getStateByRange('LOG_', 'LOG_~');
+        const allResults = [];
+        while (true) {
+            const res = await iterator.next();
+            if (res.value && res.value.value.toString()) {
+                const Record = JSON.parse(res.value.value.toString('utf8'));
+                if (Record.containerId === containerId) {
+                    allResults.push(Record);
+                }
+            }
+            if (res.done) {
+                await iterator.close();
+                return JSON.stringify(allResults);
+            }
+        }
+    }
+    async VerifyContainerStatus(ctx, containerId) { 
+        const container = await this.GetContainer(ctx, containerId);
+        return container !== null;
+    }
 
     // ==========================================
     // 9. AUDIT LOG (46-49)
     // ==========================================
     async RecordAuditLog(ctx, auditId, userId, entityName, actionType) {
-        const log = { auditId, userId, entityName, actionType, docType: 'auditLog' };
+        const log = { auditId, userId, entityName, actionType, timestamp: new Date().toISOString(), docType: 'auditLog' };
         return await this._putState(ctx, `AUDIT_${auditId}`, log);
     }
-    async GetAuditLogs(ctx, entityName) { return "[]"; }
-    async GetAuditLogsByUser(ctx, userId) { return "[]"; }
-    async VerifyAuditIntegrity(ctx, auditId) { return true; }
+    async GetAuditLogs(ctx, entityName) {
+        const iterator = await ctx.stub.getStateByRange('AUDIT_', 'AUDIT_~');
+        const allResults = [];
+        while (true) {
+            const res = await iterator.next();
+            if (res.value && res.value.value.toString()) {
+                const Record = JSON.parse(res.value.value.toString('utf8'));
+                if (Record.entityName === entityName) {
+                    allResults.push(Record);
+                }
+            }
+            if (res.done) {
+                await iterator.close();
+                return JSON.stringify(allResults);
+            }
+        }
+    }
+    async GetAuditLogsByUser(ctx, userId) {
+        const iterator = await ctx.stub.getStateByRange('AUDIT_', 'AUDIT_~');
+        const allResults = [];
+        while (true) {
+            const res = await iterator.next();
+            if (res.value && res.value.value.toString()) {
+                const Record = JSON.parse(res.value.value.toString('utf8'));
+                if (Record.userId === userId) {
+                    allResults.push(Record);
+                }
+            }
+            if (res.done) {
+                await iterator.close();
+                return JSON.stringify(allResults);
+            }
+        }
+    }
+    async VerifyAuditIntegrity(ctx, auditId) { 
+        const log = await this._getState(ctx, `AUDIT_${auditId}`);
+        return log !== null;
+    }
 
     // ==========================================
     // 10. BLOCKCHAIN TRANSACTION (50-53)
@@ -310,8 +452,17 @@ class PortchainContract extends Contract {
         return await this._putState(ctx, `TX_${txId}`, tx);
     }
     async GetBlockchainTx(ctx, txId) { return await this._getState(ctx, `TX_${txId}`); }
-    async LinkTxToEntity(ctx, txId, entityId) { return true; }
-    async VerifyTransaction(ctx, txId) { return true; }
+    async LinkTxToEntity(ctx, txId, entityId) { 
+        const tx = await this.GetBlockchainTx(ctx, txId);
+        if (!tx) return false;
+        tx.linkedEntityId = entityId;
+        await this._putState(ctx, `TX_${txId}`, tx);
+        return true;
+    }
+    async VerifyTransaction(ctx, txId) { 
+        const tx = await this.GetBlockchainTx(ctx, txId);
+        return tx !== null;
+    }
 
     // ==========================================
     // 11. EBL TOKEN (54-58)
@@ -321,7 +472,23 @@ class PortchainContract extends Contract {
         return await this._putState(ctx, `TOKEN_${tokenId}`, token);
     }
     async GetEBLToken(ctx, tokenId) { return await this._getState(ctx, `TOKEN_${tokenId}`); }
-    async GetTokensByOwner(ctx, ownerOrgId) { return "[]"; }
+    async GetTokensByOwner(ctx, ownerOrgId) {
+        const iterator = await ctx.stub.getStateByRange('TOKEN_', 'TOKEN_~');
+        const allResults = [];
+        while (true) {
+            const res = await iterator.next();
+            if (res.value && res.value.value.toString()) {
+                const Record = JSON.parse(res.value.value.toString('utf8'));
+                if (Record.ownerOrgId === ownerOrgId) {
+                    allResults.push(Record);
+                }
+            }
+            if (res.done) {
+                await iterator.close();
+                return JSON.stringify(allResults);
+            }
+        }
+    }
     async TransferEBLToken(ctx, tokenId, newOwnerOrgId) {
         const token = await this.GetEBLToken(ctx, tokenId);
         token.ownerOrgId = newOwnerOrgId;
@@ -329,37 +496,78 @@ class PortchainContract extends Contract {
     }
     async VerifyTokenOwnership(ctx, tokenId, orgId) {
         const token = await this.GetEBLToken(ctx, tokenId);
-        return token.ownerOrgId === orgId;
+        return token && token.ownerOrgId === orgId;
     }
 
     // ==========================================
     // 12. EBL TRANSFER (59-60)
     // ==========================================
     async RecordEBLTransfer(ctx, transferId, tokenId, fromOrgId, toOrgId) {
-        const transfer = { transferId, tokenId, fromOrgId, toOrgId, docType: 'eblTransfer' };
+        const transfer = { transferId, tokenId, fromOrgId, toOrgId, timestamp: new Date().toISOString(), docType: 'eblTransfer' };
         return await this._putState(ctx, `TRANSFER_${transferId}`, transfer);
     }
-    async GetTransferHistory(ctx, tokenId) { return "[]"; }
+    async GetTransferHistory(ctx, tokenId) {
+        const iterator = await ctx.stub.getStateByRange('TRANSFER_', 'TRANSFER_~');
+        const allResults = [];
+        while (true) {
+            const res = await iterator.next();
+            if (res.value && res.value.value.toString()) {
+                const Record = JSON.parse(res.value.value.toString('utf8'));
+                if (Record.tokenId === tokenId) {
+                    allResults.push(Record);
+                }
+            }
+            if (res.done) {
+                await iterator.close();
+                return JSON.stringify(allResults);
+            }
+        }
+    }
 
     // ==========================================
     // 13. INTEGRATION (OFF-CHAIN ON-CHAIN) (61-64)
     // ==========================================
     async SyncAuditLogToBlockchain(ctx, logDataStr) {
         const data = JSON.parse(logDataStr);
-        return await this.RecordAuditLog(ctx, data.auditId, data.userId, data.entity, data.action);
+        return await this.RecordAuditLog(ctx, data.auditId, data.userId, data.entity, data.actionType);
     }
-    async SyncDocumentHash(ctx, hashDataStr) { return true; }
-    async SyncCustomsToBlockchain(ctx, customsDataStr) { return true; }
-    async SyncEBLTransfer(ctx, transferDataStr) { return true; }
+    async SyncDocumentHash(ctx, hashDataStr) { 
+        const data = JSON.parse(hashDataStr);
+        return await this.RecordHashToBlockchain(ctx, data.hashId, data.documentId, data.hashValue);
+    }
+    async SyncCustomsToBlockchain(ctx, customsDataStr) { 
+        const data = JSON.parse(customsDataStr);
+        return await this.CreateCustomsClearance(ctx, data.clearanceId, data.shipmentId, data.pibNumber);
+    }
+    async SyncEBLTransfer(ctx, transferDataStr) { 
+        const data = JSON.parse(transferDataStr);
+        return await this.RecordEBLTransfer(ctx, data.transferId, data.tokenId, data.fromOrgId, data.toOrgId);
+    }
 
     // ==========================================
     // 14. VERIFICATION END-TO-END (65-69)
     // ==========================================
-    async VerifyDocumentIntegrity(ctx, docId) { return true; }
-    async VerifyAuditTrail(ctx, entityId) { return true; }
-    async VerifyShipmentHistory(ctx, shipmentId) { return true; }
-    async VerifyContainerTrace(ctx, containerId) { return true; }
-    async VerifyEndToEndFlow(ctx, shipmentId) { return true; }
+    async VerifyDocumentIntegrity(ctx, docId) { 
+        const doc = await this.GetDocument(ctx, docId);
+        return doc && doc.status !== 'INVALID';
+    }
+    async VerifyAuditTrail(ctx, entityId) { 
+        const logs = JSON.parse(await this.GetAuditLogs(ctx, entityId));
+        return logs.length > 0;
+    }
+    async VerifyShipmentHistory(ctx, shipmentId) { 
+        const shipment = await this.GetShipment(ctx, shipmentId);
+        return shipment !== null;
+    }
+    async VerifyContainerTrace(ctx, containerId) { 
+        const history = JSON.parse(await this.GetContainerHistory(ctx, containerId));
+        return history.length > 0;
+    }
+    async VerifyEndToEndFlow(ctx, shipmentId) { 
+        const shipment = await this.GetShipment(ctx, shipmentId);
+        const docs = JSON.parse(await this.GetDocumentsByShipment(ctx, shipmentId));
+        return shipment !== null && docs.length > 0;
+    }
 
 }
 
