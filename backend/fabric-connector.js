@@ -106,20 +106,10 @@ class FabricConnector {
 
         // Memetakan Peers
         peers.forEach(peer => {
-            let peerUrl = peer.api_url;
-            if (peer.api_options && peer.api_options["grpc.ssl_target_name_override"]) {
-                peerUrl = `grpcs://${peer.api_options["grpc.ssl_target_name_override"]}:8080`;
-            }
+            const peerUrl = peer.api_url;
             ccp.peers[peer.id] = {
                 "url": peerUrl,
-                "tlsCACerts": {
-                    "pem": Buffer.from(peer.pem, 'base64').toString('utf8')
-                },
-                "grpcOptions": {
-                    "ssl-target-name-override": peer.api_options ? peer.api_options["grpc.ssl_target_name_override"] : new URL(peer.api_url).hostname,
-                    "hostnameOverride": peer.api_options ? peer.api_options["grpc.ssl_target_name_override"] : new URL(peer.api_url).hostname,
-                    "grpc.default_authority": peer.api_options ? peer.api_options["grpc.default_authority"] : undefined
-                }
+                "grpcOptions": peer.api_options
             };
             
             // Masukkan ke mychannel
@@ -149,20 +139,10 @@ class FabricConnector {
 
         // Memetakan Orderers
         orderers.forEach(orderer => {
-            let ordererUrl = orderer.api_url;
-            if (orderer.api_options && orderer.api_options["grpc.ssl_target_name_override"]) {
-                ordererUrl = `grpcs://${orderer.api_options["grpc.ssl_target_name_override"]}:8080`;
-            }
+            const ordererUrl = orderer.api_url;
             ccp.orderers[orderer.id] = {
                 "url": ordererUrl,
-                "tlsCACerts": {
-                    "pem": Buffer.from(orderer.pem, 'base64').toString('utf8')
-                },
-                "grpcOptions": {
-                    "ssl-target-name-override": orderer.api_options ? orderer.api_options["grpc.ssl_target_name_override"] : new URL(orderer.api_url).hostname,
-                    "hostnameOverride": orderer.api_options ? orderer.api_options["grpc.ssl_target_name_override"] : new URL(orderer.api_url).hostname,
-                    "grpc.default_authority": orderer.api_options ? orderer.api_options["grpc.default_authority"] : undefined
-                }
+                "grpcOptions": orderer.api_options
             };
             
             // Masukkan ke mychannel
