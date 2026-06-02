@@ -106,7 +106,10 @@ class FabricConnector {
 
         // Memetakan Peers
         peers.forEach(peer => {
-            const peerUrl = peer.api_url;
+            let peerUrl = peer.api_url;
+            if (peer.api_options && peer.api_options["grpc.ssl_target_name_override"]) {
+                peerUrl = `grpcs://${peer.api_options["grpc.ssl_target_name_override"]}:8080`;
+            }
             ccp.peers[peer.id] = {
                 "url": peerUrl,
                 "tlsCACerts": {
@@ -146,7 +149,10 @@ class FabricConnector {
 
         // Memetakan Orderers
         orderers.forEach(orderer => {
-            const ordererUrl = orderer.api_url;
+            let ordererUrl = orderer.api_url;
+            if (orderer.api_options && orderer.api_options["grpc.ssl_target_name_override"]) {
+                ordererUrl = `grpcs://${orderer.api_options["grpc.ssl_target_name_override"]}:8080`;
+            }
             ccp.orderers[orderer.id] = {
                 "url": ordererUrl,
                 "tlsCACerts": {
