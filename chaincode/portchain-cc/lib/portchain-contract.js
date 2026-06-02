@@ -55,8 +55,19 @@ class PortchainContract extends Contract {
     }
 
     async GetAllOrganizations(ctx) {
-        // Mock query logic for MVP
-        return "[]"; 
+        const iterator = await ctx.stub.getStateByRange('ORG_', 'ORG_~');
+        const allResults = [];
+        while (true) {
+            const res = await iterator.next();
+            if (res.value && res.value.value.toString()) {
+                const Record = JSON.parse(res.value.value.toString('utf8'));
+                allResults.push(Record);
+            }
+            if (res.done) {
+                await iterator.close();
+                return JSON.stringify(allResults);
+            }
+        }
     }
 
     async UpdateOrganization(ctx, orgId, orgName) {
@@ -77,7 +88,21 @@ class PortchainContract extends Contract {
     }
 
     async GetUsersByOrganization(ctx, orgId) {
-        return "[]"; // Simplified
+        const iterator = await ctx.stub.getStateByRange('USER_', 'USER_~');
+        const allResults = [];
+        while (true) {
+            const res = await iterator.next();
+            if (res.value && res.value.value.toString()) {
+                const Record = JSON.parse(res.value.value.toString('utf8'));
+                if (Record.orgId === orgId) {
+                    allResults.push(Record);
+                }
+            }
+            if (res.done) {
+                await iterator.close();
+                return JSON.stringify(allResults);
+            }
+        }
     }
 
     async UpdateUser(ctx, userId, fullName) {
