@@ -124,7 +124,8 @@ class FabricConnector {
                 "endorsingPeer": true,
                 "chaincodeQuery": true,
                 "ledgerQuery": true,
-                "eventSource": true
+                "eventSource": true,
+                "discover": true
             };
             
             // Setup Org otomatis
@@ -161,6 +162,9 @@ class FabricConnector {
             // Masukkan ke mychannel
             ccp.channels.mychannel.orderers.push(orderer.id);
         });
+
+        // Log ccp for debugging
+        console.log("GENERATED CCP:", JSON.stringify(ccp, null, 2));
 
         return ccp;
     }
