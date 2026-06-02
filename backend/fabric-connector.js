@@ -113,8 +113,9 @@ class FabricConnector {
                     "pem": Buffer.from(peer.pem, 'base64').toString('utf8')
                 },
                 "grpcOptions": {
-                    "ssl-target-name-override": new URL(peer.api_url).hostname,
-                    "hostnameOverride": new URL(peer.api_url).hostname
+                    "ssl-target-name-override": peer.api_options ? peer.api_options["grpc.ssl_target_name_override"] : new URL(peer.api_url).hostname,
+                    "hostnameOverride": peer.api_options ? peer.api_options["grpc.ssl_target_name_override"] : new URL(peer.api_url).hostname,
+                    "grpc.default_authority": peer.api_options ? peer.api_options["grpc.default_authority"] : undefined
                 }
             };
             
@@ -151,8 +152,9 @@ class FabricConnector {
                     "pem": Buffer.from(orderer.pem, 'base64').toString('utf8')
                 },
                 "grpcOptions": {
-                    "ssl-target-name-override": new URL(orderer.api_url).hostname,
-                    "hostnameOverride": new URL(orderer.api_url).hostname
+                    "ssl-target-name-override": orderer.api_options ? orderer.api_options["grpc.ssl_target_name_override"] : new URL(orderer.api_url).hostname,
+                    "hostnameOverride": orderer.api_options ? orderer.api_options["grpc.ssl_target_name_override"] : new URL(orderer.api_url).hostname,
+                    "grpc.default_authority": orderer.api_options ? orderer.api_options["grpc.default_authority"] : undefined
                 }
             };
             

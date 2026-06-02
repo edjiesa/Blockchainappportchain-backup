@@ -66,12 +66,16 @@ app.post('/api/invoke', async (req, res) => {
         if (!network) return res.status(503).json({ error: 'Fabric gateway belum siap' });
 
         const contract = network.getContract(chaincode);
-        const parsedArgs = args || [];
+        const parsedArgs = (args || []).map(arg => arg !== null && arg !== undefined ? arg.toString() : "");
         const resultBytes = await contract.submitTransaction(functionName, ...parsedArgs);
         const result = resultBytes.toString('utf8');
 
         res.json({ success: true, result: result ? JSON.parse(result) : null });
     } catch (error) {
+        console.error("RAW ENDORSEMENT ERROR:", error);
+        if (error.errors && error.errors.length > 0) {
+            console.error("PEER RESPONSE 1:", error.errors[0]);
+        }
         res.status(500).json({ success: false, error: error.message });
     }
 });
