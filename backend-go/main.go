@@ -722,6 +722,7 @@ func handleCreateShipment(params json.RawMessage) (interface{}, interface{}) {
 	
 	if fabricErr != nil {
 		log.Printf("Blockchain Tx Error: %v", fabricErr)
+		return nil, fabricErr
 	} else {
 		log.Printf("Successfully committed CreateShipment to Fabric!")
 	}

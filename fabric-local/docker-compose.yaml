@@ -8,7 +8,9 @@ services:
       - "8080:8080"
       - "3001:3001"
     environment:
-      - MICROFAB_CONFIG={"endorsing_organizations":[{"name":"portorg"},{"name":"customsorg"},{"name":"bankorg"}],"channels":[{"name":"mychannel","endorsing_organizations":["portorg","customsorg","bankorg"]}],"capability_level":"V2_0"}
+      - MICROFAB_CONFIG={"endorsing_organizations":[{"name":"portorg"},{"name":"customsorg"},{"name":"bankorg"}],"channels":[{"name":"mychannel","endorsing_organizations":["portorg","customsorg","bankorg"]}],"chaincodes":[{"name":"portchain-cc","version":"1.0.0","format":"node","channel":"mychannel","directory":"/chaincode"}],"capability_level":"V2_0"}
+    volumes:
+      - ../chaincode/portchain-cc:/chaincode
 
   # 2. DATABASE OFF-CHAIN - PostgreSQL
   postgres:
