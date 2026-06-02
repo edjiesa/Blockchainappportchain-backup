@@ -131,7 +131,23 @@ class PortchainContract extends Contract {
         return await this._getState(ctx, `SHIPMENT_${shipmentId}`);
     }
 
-    async GetShipmentByCode(ctx, code) { return "[]"; }
+    async GetShipmentByCode(ctx, code) {
+        const iterator = await ctx.stub.getStateByRange('SHIPMENT_', 'SHIPMENT_~');
+        const allResults = [];
+        while (true) {
+            const res = await iterator.next();
+            if (res.value && res.value.value.toString()) {
+                const Record = JSON.parse(res.value.value.toString('utf8'));
+                if (Record.code === code) {
+                    allResults.push(Record);
+                }
+            }
+            if (res.done) {
+                await iterator.close();
+                return JSON.stringify(allResults);
+            }
+        }
+    }
     
     async UpdateShipment(ctx, shipmentId, exporter) {
         const shipment = await this.GetShipment(ctx, shipmentId);
@@ -145,7 +161,21 @@ class PortchainContract extends Contract {
         return await this._putState(ctx, `SHIPMENT_${shipmentId}`, shipment);
     }
 
-    async GetAllShipments(ctx) { return "[]"; }
+    async GetAllShipments(ctx) {
+        const iterator = await ctx.stub.getStateByRange('SHIPMENT_', 'SHIPMENT_~');
+        const allResults = [];
+        while (true) {
+            const res = await iterator.next();
+            if (res.value && res.value.value.toString()) {
+                const Record = JSON.parse(res.value.value.toString('utf8'));
+                allResults.push(Record);
+            }
+            if (res.done) {
+                await iterator.close();
+                return JSON.stringify(allResults);
+            }
+        }
+    }
 
     // ==========================================
     // 3. CONTAINER (16-20)
