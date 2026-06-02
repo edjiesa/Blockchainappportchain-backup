@@ -8,6 +8,11 @@ export function Shipments() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [shipments, setShipments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Verification State
+  const [verificationData, setVerificationData] = useState<any | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+
   const itemsPerPage = 10;
 
   // Form State
@@ -71,7 +76,7 @@ export function Shipments() {
       const data = await response.json();
       
       if (data.result) {
-        alert(`Shipment berhasil dicatat di PostgreSQL dan Blockchain!\nTxID: ${data.result.txId}`);
+        alert(`Shipment berhasil dicatat di PostgreSQL dan Blockchain!\nTxID: ${data.result.txId || 'Terverifikasi'}`);
         setShowCreateDialog(false);
         fetchShipments(); // Refresh table
       } else {
@@ -80,6 +85,33 @@ export function Shipments() {
     } catch (error) {
       console.error(error);
       alert('Network error');
+    }
+  };
+
+  const handleVerifyBlockchain = async (shipmentId: string) => {
+    setIsVerifying(true);
+    setVerificationData(null);
+    try {
+      const response = await fetch('http://localhost:3001/rpc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "GetShipment",
+          params: [shipmentId],
+          id: 3
+        })
+      });
+      const data = await response.json();
+      if (data.result) {
+        setVerificationData(data.result);
+      } else {
+        setVerificationData({ error: 'Data tidak ditemukan di blockchain' });
+      }
+    } catch (error) {
+      setVerificationData({ error: 'Gagal terhubung ke jaringan blockchain' });
+    } finally {
+      setIsVerifying(false);
     }
   };
 
@@ -131,6 +163,7 @@ export function Shipments() {
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-600 uppercase">Importir</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-600 uppercase">Status</th>
                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-600 uppercase">Tanggal</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-gray-600 uppercase">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -163,6 +196,14 @@ export function Shipments() {
                     <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
                       {new Date(shipment.created_at).toLocaleDateString('id-ID')}
                     </td>
+                    <td className="px-6 py-4">
+                      <button 
+                        onClick={() => handleVerifyBlockchain(shipment.shipment_id)}
+                        className="px-3 py-1 bg-green-100 text-green-700 hover:bg-green-200 rounded-md text-xs font-medium border border-green-200 transition-colors"
+                      >
+                        Cek Blockchain
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -170,6 +211,43 @@ export function Shipments() {
           </table>
         </div>
       </div>
+
+      {/* Verification Modal */}
+      {(isVerifying || verificationData) && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-green-500 inline-block animate-pulse"></span>
+              Node Fabric Verifier
+            </h3>
+            
+            {isVerifying ? (
+              <div className="py-8 text-center text-gray-600">
+                <p>Mengambil data langsung dari Hyperledger Fabric...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-gray-900 rounded-lg p-4 overflow-x-auto">
+                  <pre className="text-green-400 text-sm font-mono whitespace-pre-wrap">
+                    {JSON.stringify(verificationData, null, 2)}
+                  </pre>
+                </div>
+                {verificationData && !verificationData.error && (
+                  <p className="text-sm text-green-600 font-medium">✓ Data valid dan tidak dapat diubah (Immutable)</p>
+                )}
+                <div className="pt-4 text-right">
+                  <button
+                    onClick={() => setVerificationData(null)}
+                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium"
+                  >
+                    Tutup
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Create Shipment Dialog */}
       {showCreateDialog && (
