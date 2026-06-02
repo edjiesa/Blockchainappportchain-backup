@@ -1,8 +1,11 @@
 {
   "name": "portchain-cc",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "PortChain Unified Smart Contract",
   "main": "index.js",
+  "scripts": {
+    "start": "fabric-chaincode-node start"
+  },
   "engines": {
     "node": ">=20.0.0"
   },
