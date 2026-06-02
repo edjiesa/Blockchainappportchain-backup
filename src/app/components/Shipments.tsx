@@ -105,6 +105,8 @@ export function Shipments() {
       const data = await response.json();
       if (data.result) {
         setVerificationData(data.result);
+      } else if (data.error) {
+        setVerificationData({ error: data.error.message || JSON.stringify(data.error) });
       } else {
         setVerificationData({ error: 'Data tidak ditemukan di blockchain' });
       }

@@ -715,14 +715,25 @@ func handleCreateShipment(params json.RawMessage) (interface{}, interface{}) {
 	orgID := "org-001" // Default for port admin
 	txID := "tx-" + uuid.New().String()[:8]
 
-	// Simulate Blockchain TX
+	// Invoke Real Blockchain Smart Contract
+	fabricArgs := []interface{}{shipmentID, orgID, input.ShipmentCode, input.ExporterName, input.ImporterName}
+	fabricArgsJSON, _ := json.Marshal(fabricArgs)
+	_, fabricErr := handleSmartContractForwarding("CreateShipment", json.RawMessage(fabricArgsJSON))
+	
+	if fabricErr != nil {
+		log.Printf("Blockchain Tx Error: %v", fabricErr)
+	} else {
+		log.Printf("Successfully committed CreateShipment to Fabric!")
+	}
+
+	// Also log to blockchain_transactions table for UI history
 	_, err := db.Exec(`
 		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
 		VALUES ($1, $2, 'port-channel', 'portchain-cc', 'CreateShipment', 'VALID')
-	`, txID, uuid.New().String(), string(input.ShipmentCode))
+	`, txID, uuid.New().String())
 	
 	if err != nil {
-		log.Printf("Blockchain Tx Error: %v", err)
+		log.Printf("Blockchain Tx Log Error: %v", err)
 	}
 
 	// Insert into PostgreSQL
