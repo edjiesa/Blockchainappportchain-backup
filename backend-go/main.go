@@ -170,9 +170,9 @@ func handleSmartContractForwarding(method string, params json.RawMessage) (inter
 		isQuery = true
 	}
 
-	url := "http://127.0.0.1:3001/api/invoke"
+	url := "http://127.0.0.1:3002/api/invoke"
 	if isQuery {
-		url = "http://127.0.0.1:3001/api/query"
+		url = "http://127.0.0.1:3002/api/query"
 	}
 
 	var argsArray []interface{}

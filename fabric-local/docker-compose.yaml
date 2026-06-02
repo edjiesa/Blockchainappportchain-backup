@@ -44,6 +44,18 @@ services:
       postgres:
         condition: service_healthy
 
+  # 3a. NODE.JS FABRIC CONNECTOR
+  fabric-connector:
+    image: node:20-alpine
+    container_name: fabric-connector
+    network_mode: "service:microfab"
+    working_dir: /app
+    volumes:
+      - ../backend:/app
+    command: sh -c "npm install && node server.js"
+    depends_on:
+      - backend
+
   # 3b. EXTERNAL TIER - Bank Integration Mock
   external-bank:
     image: node:20-alpine

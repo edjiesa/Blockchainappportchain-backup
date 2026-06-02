@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = 3001;
+const PORT = 3002;
 
 // ─── FABRIC HEALTH ──────────────────────────────────
 app.get('/api/status', async (req, res) => {
