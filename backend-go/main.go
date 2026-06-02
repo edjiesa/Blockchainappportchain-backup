@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -145,7 +147,8 @@ func rpcHandler(w http.ResponseWriter, r *http.Request) {
 	case "UpdateCustomsStatus":
 		result, errObj = handleUpdateCustomsStatus(req.Params)
 	default:
-		errObj = map[string]string{"code": "-32601", "message": "Method not found"}
+		// Forward dynamic methods (like the 73 Smart Contract functions) to the Node.js Fabric Connector
+		result, errObj = handleSmartContractForwarding(req.Method, req.Params)
 	}
 
 	resp := RPCResponse{
@@ -160,6 +163,83 @@ func rpcHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // ---- LOGIC METHODS ----
+
+func handleSmartContractForwarding(method string, params json.RawMessage) (interface{}, interface{}) {
+	isQuery := false
+	if strings.HasPrefix(method, "Get") || strings.HasPrefix(method, "Verify") {
+		isQuery = true
+	}
+
+	url := "http://127.0.0.1:3001/api/invoke"
+	if isQuery {
+		url = "http://127.0.0.1:3001/api/query"
+	}
+
+	var argsArray []interface{}
+	if len(params) > 0 {
+		if params[0] == '[' {
+			json.Unmarshal(params, &argsArray)
+		} else if params[0] == '{' {
+			// Extract as a single JSON string if it's an object, some contracts accept this
+			argsArray = []interface{}{string(params)}
+		}
+	}
+
+	argsJSON, _ := json.Marshal(argsArray)
+
+	var reqObj *http.Request
+	var err error
+
+	if isQuery {
+		reqObj, err = http.NewRequest("GET", url, nil)
+		if err == nil {
+			q := reqObj.URL.Query()
+			q.Add("chaincode", "portchain-cc")
+			q.Add("functionName", method)
+			if len(argsArray) > 0 {
+				q.Add("args", string(argsJSON))
+			}
+			reqObj.URL.RawQuery = q.Encode()
+		}
+	} else {
+		payload := map[string]interface{}{
+			"chaincode": "portchain-cc",
+			"functionName": method,
+			"args": argsArray,
+		}
+		payloadBytes, _ := json.Marshal(payload)
+		reqObj, err = http.NewRequest("POST", url, bytes.NewBuffer(payloadBytes))
+		if err == nil {
+			reqObj.Header.Set("Content-Type", "application/json")
+		}
+	}
+
+	if err != nil {
+		return nil, map[string]string{"code": "-32000", "message": "Failed to construct request to Fabric Connector"}
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(reqObj)
+	if err != nil {
+		return nil, map[string]string{"code": "-32001", "message": "Failed to connect to Fabric Connector at " + url}
+	}
+	defer resp.Body.Close()
+
+	var fabricResp map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&fabricResp); err != nil {
+		return nil, map[string]string{"code": "-32002", "message": "Invalid JSON response from Fabric Connector"}
+	}
+
+	if success, ok := fabricResp["success"].(bool); ok && !success {
+		errMsg := "Unknown Fabric Error"
+		if e, ok := fabricResp["error"].(string); ok {
+			errMsg = e
+		}
+		return nil, map[string]string{"code": "-32003", "message": errMsg}
+	}
+
+	return fabricResp["result"], nil
+}
 
 func handleRegisterUser(params json.RawMessage) (interface{}, interface{}) {
 	var input struct {

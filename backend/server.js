@@ -55,6 +55,27 @@ app.get('/api/query', async (req, res) => {
     }
 });
 
+// ─── BLOCKCHAIN INVOKE ───────────────────────────────
+app.post('/api/invoke', async (req, res) => {
+    try {
+        const { chaincode, functionName, args } = req.body;
+        if (!chaincode || !functionName)
+            return res.status(400).json({ error: 'chaincode dan functionName wajib diisi' });
+
+        const network = fabricConnector.getNetwork();
+        if (!network) return res.status(503).json({ error: 'Fabric gateway belum siap' });
+
+        const contract = network.getContract(chaincode);
+        const parsedArgs = args || [];
+        const resultBytes = await contract.submitTransaction(functionName, ...parsedArgs);
+        const result = resultBytes.toString('utf8');
+
+        res.json({ success: true, result: result ? JSON.parse(result) : null });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // ─── SHIPMENTS (PostgreSQL) ──────────────────────────
 app.get('/api/shipments', async (req, res) => {
     try {
