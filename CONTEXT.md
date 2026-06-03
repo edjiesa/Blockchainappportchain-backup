@@ -22,7 +22,9 @@ docker-compose.yaml → fabric-local/docker-compose.yaml
 | Container | Image | Port Expose | Network |
 |---|---|---|---|
 | `microfab` | `ibmcom/ibp-microfab:latest` | 8080 (Fabric API), 3001 (Backend) | fabric-local_default |
-| `fabric-backend` | Custom (node:20-alpine) | - (shared dgn microfab) | `network_mode: service:microfab` |
+| `fabric-backend-go` | Custom (Golang 1.22) | - (shared dgn microfab) | `network_mode: service:microfab` |
+| `fabric-connector` | Custom (Node.js 20) | - (shared dgn microfab) | `network_mode: service:microfab` |
+| `external-bank-mock` | Custom (Node.js 20) | - (shared dgn microfab) | `network_mode: service:microfab` |
 | `portchain-db` | `postgres:16-alpine` | 5432 | fabric-local_default |
 | `react-frontend` | `node:20-alpine` | 5173 | fabric-local_default |
 
@@ -35,6 +37,8 @@ docker-compose.yaml → fabric-local/docker-compose.yaml
 3. **Port 3001 di-expose dari microfab container** (bukan dari backend container) karena backend share network microfab.
 
 4. **Frontend node_modules** menggunakan Docker named volume `frontend_node_modules` terpisah agar tidak konflik dengan host Windows.
+
+5. **Persistent Storage** untuk blockchain menggunakan volume `microfab_data`, sedangkan PostgreSQL menggunakan `postgres_data`.
 
 ---
 

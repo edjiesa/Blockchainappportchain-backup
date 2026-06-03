@@ -43,6 +43,7 @@
 | `Client Side` | React + WebUSB | Antarmuka pengguna (Dashboard, Scanner Tools, HW Wallet). |
 | `microfab` | IBM Microfab | Permissioned Blockchain Network (Port, Customs, Bank Org). |
 | `fabric-backend-go` | Go 1.22 | Middleware (API Gateway, Logic Layer, Go Listener/pgAudit). |
+| `fabric-connector` | Node.js | Jembatan komunikasi ke blockchain Fabric SDK |
 | `portchain-db` | PostgreSQL 16 | Off-chain data & Audit Logs terpusat, dengan fungsi Enkripsi. |
 | `external-bank` | Node.js (Mock) | Sistem Eksternal pihak ke-3 untuk mengeksekusi Payment Contract. |
 
