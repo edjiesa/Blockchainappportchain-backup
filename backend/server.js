@@ -59,6 +59,7 @@ app.get('/api/query', async (req, res) => {
 app.post('/api/invoke', async (req, res) => {
     try {
         const { chaincode, functionName, args } = req.body;
+        console.log("INVOKE BODY:", req.body);
         if (!chaincode || !functionName)
             return res.status(400).json({ error: 'chaincode dan functionName wajib diisi' });
 

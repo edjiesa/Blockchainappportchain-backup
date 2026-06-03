@@ -11,6 +11,7 @@ services:
       - MICROFAB_CONFIG={"endorsing_organizations":[{"name":"portorg"},{"name":"customsorg"},{"name":"bankorg"}],"channels":[{"name":"mychannel","endorsing_organizations":["portorg","customsorg","bankorg"]}],"chaincodes":[{"name":"portchain-cc","version":"1.0.1","format":"node","channel":"mychannel","directory":"/chaincode"}],"capability_level":"V2_0"}
     volumes:
       - ../chaincode/portchain-cc:/chaincode
+      - microfab_data:/home/microfab/data
 
   # 2. DATABASE OFF-CHAIN - PostgreSQL
   postgres:
@@ -91,3 +92,4 @@ services:
 volumes:
   postgres_data:
   frontend_node_modules:
+  microfab_data:

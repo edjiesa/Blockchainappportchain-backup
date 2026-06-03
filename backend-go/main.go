@@ -146,6 +146,8 @@ func rpcHandler(w http.ResponseWriter, r *http.Request) {
 		result, errObj = handleCreateCustomsClearance(req.Params)
 	case "UpdateCustomsStatus":
 		result, errObj = handleUpdateCustomsStatus(req.Params)
+	case "CreateContainer":
+		result, errObj = handleCreateContainer(req.Params)
 	default:
 		// Forward dynamic methods (like the 73 Smart Contract functions) to the Node.js Fabric Connector
 		result, errObj = handleSmartContractForwarding(req.Method, req.Params)
@@ -165,6 +167,7 @@ func rpcHandler(w http.ResponseWriter, r *http.Request) {
 // ---- LOGIC METHODS ----
 
 func handleSmartContractForwarding(method string, params json.RawMessage) (interface{}, interface{}) {
+	log.Printf("DEBUG handleSmartContractForwarding params: %s", string(params))
 	isQuery := false
 	if strings.HasPrefix(method, "Get") || strings.HasPrefix(method, "Verify") {
 		isQuery = true
@@ -186,7 +189,8 @@ func handleSmartContractForwarding(method string, params json.RawMessage) (inter
 	}
 
 	argsJSON, _ := json.Marshal(argsArray)
-
+	log.Printf("DEBUG argsArray: len=%d, content=%s", len(argsArray), string(argsJSON))
+	
 	var reqObj *http.Request
 	var err error
 
@@ -457,6 +461,15 @@ func handleUploadDocument(params json.RawMessage) (interface{}, interface{}) {
 	hashID := "hash-" + uuid.New().String()[:8]
 	docHash := uuid.New().String() // Simulated SHA-256
 
+	// Invoke Real Blockchain Smart Contract
+	fabricArgs := []interface{}{docID, input.ShipmentID, input.DocumentType, input.DocumentCategory}
+	fabricArgsJSON, _ := json.Marshal(fabricArgs)
+	_, fabricErr := handleSmartContractForwarding("UploadDocument", json.RawMessage(fabricArgsJSON))
+	if fabricErr != nil {
+		log.Printf("Blockchain Tx Error: %v", fabricErr)
+		return nil, fabricErr
+	}
+
 	// 1. Log to Blockchain Transactions
 	_, err := db.Exec(`
 		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
@@ -485,6 +498,31 @@ func handleUploadDocument(params json.RawMessage) (interface{}, interface{}) {
 	if err != nil {
 		log.Printf("DB Insert Document Hash Error: %v", err)
 		return nil, map[string]string{"code": "-32001", "message": "Failed to insert document hash"}
+	}
+
+	// 4. Auto-mint EBL Token if Document is a Bill of Lading
+	if input.DocumentType == "Bill of Lading" {
+		eblID := "ebl-" + uuid.New().String()[:8]
+		eblTxID := "tx-" + uuid.New().String()[:8]
+		orgID := "org-001" // Default issuer
+
+		// Invoke EBL Smart Contract
+		eblArgs := []interface{}{eblID, docID, orgID}
+		eblArgsJSON, _ := json.Marshal(eblArgs)
+		_, eblErr := handleSmartContractForwarding("IssueEBLToken", json.RawMessage(eblArgsJSON))
+		if eblErr != nil {
+			log.Printf("EBL Blockchain Tx Error: %v", eblErr)
+		} else {
+			db.Exec(`
+				INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
+				VALUES ($1, $2, 'port-channel', 'ebl-cc', 'IssueEBLToken', 'VALID')
+			`, eblTxID, uuid.New().String())
+
+			db.Exec(`
+				INSERT INTO ebl_tokens (ebl_token_id, document_id, token_number, current_owner_org_id, token_status, issued_at, blockchain_tx_id)
+				VALUES ($1, $2, $3, $4, 'ACTIVE', NOW(), $5)
+			`, eblID, docID, "EBL-"+docID[4:], orgID, eblTxID)
+		}
 	}
 
 	return map[string]interface{}{"success": true, "message": "Document uploaded successfully", "document_id": docID}, nil
@@ -516,38 +554,6 @@ func handleGetOrganizations() (interface{}, interface{}) {
 }
 
 func handleGetEBLTokens() (interface{}, interface{}) {
-	// Auto-mint a dummy EBL if none exists
-	var count int
-	db.QueryRow("SELECT COUNT(*) FROM ebl_tokens").Scan(&count)
-	if count == 0 {
-		eblID := "ebl-" + uuid.New().String()[:8]
-		txID := "tx-" + uuid.New().String()[:8]
-		
-		// Insert a dummy document if none exists, just to attach the EBL
-		var docID string
-		err := db.QueryRow("SELECT document_id FROM documents LIMIT 1").Scan(&docID)
-		if err != nil || docID == "" {
-			docID = "doc-" + uuid.New().String()[:8]
-			db.Exec(`INSERT INTO documents (document_id, document_type, document_title, issued_at) VALUES ($1, 'Bill of Lading', 'Auto Generated EBL Doc', NOW())`, docID)
-		}
-
-		// Insert a dummy organization if none exists
-		var orgID string
-		err = db.QueryRow("SELECT organization_id FROM organizations LIMIT 1").Scan(&orgID)
-		if err != nil || orgID == "" {
-			orgID = "org-001"
-		}
-
-		db.Exec(`
-			INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
-			VALUES ($1, $2, 'port-channel', 'ebl-cc', 'IssueEBLToken', 'VALID')
-		`, txID, uuid.New().String())
-
-		db.Exec(`
-			INSERT INTO ebl_tokens (ebl_token_id, document_id, token_number, current_owner_org_id, token_status, issued_at, blockchain_tx_id)
-			VALUES ($1, $2, 'EBL-TOKEN-001', $3, 'ACTIVE', NOW(), $4)
-		`, eblID, docID, orgID, txID)
-	}
 
 	rows, err := db.Query(`
 		SELECT ebl_token_id, document_id, token_number, current_owner_org_id, token_status, issued_at, blockchain_tx_id
@@ -602,6 +608,15 @@ func handleTransferEBLToken(params json.RawMessage) (interface{}, interface{}) {
 		return nil, map[string]string{"code": "-32002", "message": "Token not found"}
 	}
 
+	// Invoke Real Blockchain Smart Contract
+	fabricArgs := []interface{}{eblID, input.ToOrgID}
+	fabricArgsJSON, _ := json.Marshal(fabricArgs)
+	_, fabricErr := handleSmartContractForwarding("TransferEBLToken", json.RawMessage(fabricArgsJSON))
+	if fabricErr != nil {
+		log.Printf("Blockchain Tx Error: %v", fabricErr)
+		return nil, fabricErr
+	}
+
 	// 1. Log to Blockchain Transactions
 	_, err = db.Exec(`
 		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
@@ -646,6 +661,15 @@ func handleCreateCustomsClearance(params json.RawMessage) (interface{}, interfac
 	cID := "cc-" + uuid.New().String()[:8]
 	txID := uuid.New().String()
 
+	// Invoke Real Blockchain Smart Contract
+	fabricArgs := []interface{}{cID, input.ShipmentID, input.PibNumber}
+	fabricArgsJSON, _ := json.Marshal(fabricArgs)
+	_, fabricErr := handleSmartContractForwarding("CreateCustomsClearance", json.RawMessage(fabricArgsJSON))
+	if fabricErr != nil {
+		log.Printf("Blockchain Tx Error: %v", fabricErr)
+		return nil, fabricErr
+	}
+
 	// Insert into blockchain_transactions first to satisfy foreign key constraint
 	_, err := db.Exec(`
 		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
@@ -679,6 +703,15 @@ func handleUpdateCustomsStatus(params json.RawMessage) (interface{}, interface{}
 
 	newTxID := uuid.New().String()
 
+	// Invoke Real Blockchain Smart Contract
+	fabricArgs := []interface{}{input.CustomsClearanceID, input.Status}
+	fabricArgsJSON, _ := json.Marshal(fabricArgs)
+	_, fabricErr := handleSmartContractForwarding("UpdateCustomsStatus", json.RawMessage(fabricArgsJSON))
+	if fabricErr != nil {
+		log.Printf("Blockchain Tx Error: %v", fabricErr)
+		return nil, fabricErr
+	}
+
 	// Insert into blockchain_transactions first to satisfy foreign key constraint
 	_, err := db.Exec(`
 		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
@@ -700,6 +733,51 @@ func handleUpdateCustomsStatus(params json.RawMessage) (interface{}, interface{}
 	}
 
 	return map[string]interface{}{"success": true, "message": "Status updated successfully"}, nil
+}
+
+func handleCreateContainer(params json.RawMessage) (interface{}, interface{}) {
+	var input struct {
+		ShipmentID      string  `json:"shipment_id"`
+		ContainerNumber string  `json:"container_number"`
+		SizeFt          string  `json:"size_ft"`
+		ContainerType   string  `json:"container_type"`
+		SealNumber      string  `json:"seal_number"`
+		GrossWeight     float64 `json:"gross_weight"`
+	}
+	if err := json.Unmarshal(params, &input); err != nil {
+		return nil, map[string]string{"code": "-32602", "message": "Invalid params"}
+	}
+
+	containerID := "cont-" + uuid.New().String()[:8]
+	txID := uuid.New().String()
+
+	// Invoke Real Blockchain Smart Contract
+	// CreateContainer(ctx, containerId, shipmentId, containerNumber, size, type)
+	fabricArgs := []interface{}{containerID, input.ShipmentID, input.ContainerNumber, input.SizeFt, input.ContainerType}
+	fabricArgsJSON, _ := json.Marshal(fabricArgs)
+	_, fabricErr := handleSmartContractForwarding("CreateContainer", json.RawMessage(fabricArgsJSON))
+	if fabricErr != nil {
+		log.Printf("Blockchain Tx Error: %v", fabricErr)
+		return nil, fabricErr
+	}
+
+	// Insert into DB
+	_, err := db.Exec(`
+		INSERT INTO containers (container_id, shipment_id, container_number, container_type, size_ft, seal_number, gross_weight, container_status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, 'AT_PORT')
+	`, containerID, input.ShipmentID, input.ContainerNumber, input.ContainerType, input.SizeFt, input.SealNumber, input.GrossWeight)
+
+	if err != nil {
+		log.Printf("DB Insert Error: %v", err)
+		return nil, map[string]string{"code": "-32001", "message": "Failed to insert container into database"}
+	}
+
+	db.Exec(`
+		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
+		VALUES ($1, $2, 'port-channel', 'portchain-cc', 'CreateContainer', 'VALID')
+	`, txID, uuid.New().String())
+
+	return map[string]interface{}{"success": true, "message": "Container created successfully", "container_id": containerID, "txId": txID}, nil
 }
 
 

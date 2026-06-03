@@ -13,6 +13,17 @@ export function Shipments() {
   const [verificationData, setVerificationData] = useState<any | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
 
+  // Container State
+  const [showContainerDialog, setShowContainerDialog] = useState(false);
+  const [selectedShipmentId, setSelectedShipmentId] = useState('');
+  const [containerData, setContainerData] = useState({
+    container_number: '',
+    size_ft: '20ft',
+    container_type: 'Dry',
+    seal_number: '',
+    gross_weight: ''
+  });
+
   const itemsPerPage = 10;
 
   // Form State
@@ -88,6 +99,46 @@ export function Shipments() {
     }
   };
 
+  const handleCreateContainer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        shipment_id: selectedShipmentId,
+        ...containerData,
+        gross_weight: Number(containerData.gross_weight)
+      };
+
+      const response = await fetch('http://localhost:3001/rpc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "CreateContainer",
+          params: payload,
+          id: 5
+        })
+      });
+      const data = await response.json();
+      
+      if (data.result) {
+        alert(`Container berhasil dicatat di PostgreSQL dan Blockchain!\nTxID: ${data.result.txId}`);
+        setShowContainerDialog(false);
+        setContainerData({
+          container_number: '',
+          size_ft: '20ft',
+          container_type: 'Dry',
+          seal_number: '',
+          gross_weight: ''
+        });
+      } else {
+        alert('Gagal membuat container');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Network error');
+    }
+  };
+
   const handleVerifyBlockchain = async (shipmentId: string) => {
     setIsVerifying(true);
     setVerificationData(null);
@@ -105,6 +156,35 @@ export function Shipments() {
       const data = await response.json();
       if (data.result) {
         setVerificationData(data.result);
+      } else if (data.error) {
+        setVerificationData({ error: data.error.message || JSON.stringify(data.error) });
+      } else {
+        setVerificationData({ error: 'Data tidak ditemukan di blockchain' });
+      }
+    } catch (error) {
+      setVerificationData({ error: 'Gagal terhubung ke jaringan blockchain' });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleVerifyEndToEnd = async (shipmentId: string) => {
+    setIsVerifying(true);
+    setVerificationData(null);
+    try {
+      const response = await fetch('http://localhost:3001/rpc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "VerifyEndToEndFlow",
+          params: [shipmentId],
+          id: 4
+        })
+      });
+      const data = await response.json();
+      if (data.result !== undefined) {
+        setVerificationData({ "Status Verifikasi End-to-End": data.result ? "Valid dan Terintegrasi" : "Tidak Lengkap/Invalid" });
       } else if (data.error) {
         setVerificationData({ error: data.error.message || JSON.stringify(data.error) });
       } else {
@@ -199,12 +279,29 @@ export function Shipments() {
                       {new Date(shipment.created_at).toLocaleDateString('id-ID')}
                     </td>
                     <td className="px-6 py-4">
-                      <button 
-                        onClick={() => handleVerifyBlockchain(shipment.shipment_id)}
-                        className="px-3 py-1 bg-green-100 text-green-700 hover:bg-green-200 rounded-md text-xs font-medium border border-green-200 transition-colors"
-                      >
-                        Cek Blockchain
-                      </button>
+                      <div className="flex flex-col gap-2">
+                        <button 
+                          onClick={() => handleVerifyBlockchain(shipment.shipment_id)}
+                          className="px-3 py-1 bg-green-100 text-green-700 hover:bg-green-200 rounded-md text-xs font-medium border border-green-200 transition-colors text-center"
+                        >
+                          Cek Blockchain
+                        </button>
+                        <button 
+                          onClick={() => handleVerifyEndToEnd(shipment.shipment_id)}
+                          className="px-3 py-1 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-md text-xs font-medium border border-purple-200 transition-colors text-center"
+                        >
+                          Verifikasi End-to-End
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setSelectedShipmentId(shipment.shipment_id);
+                            setShowContainerDialog(true);
+                          }}
+                          className="px-3 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-md text-xs font-medium border border-blue-200 transition-colors text-center"
+                        >
+                          + Container
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -376,6 +473,98 @@ export function Shipments() {
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
                 >
                   Buat Shipment (Kirim Tx)
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Container Dialog */}
+      {showContainerDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-xl font-bold text-gray-900">Tambah Container Baru</h3>
+              <p className="text-sm text-gray-600 mt-1">Isi detail container untuk shipment yang dipilih</p>
+            </div>
+            
+            <form onSubmit={handleCreateContainer} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">No Container</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    value={containerData.container_number}
+                    onChange={e => setContainerData({...containerData, container_number: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Ukuran</label>
+                  <select
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    value={containerData.size_ft}
+                    onChange={e => setContainerData({...containerData, size_ft: e.target.value})}
+                  >
+                    <option value="20ft">20ft</option>
+                    <option value="40ft">40ft</option>
+                    <option value="45ft">45ft</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Tipe Container</label>
+                  <select
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    value={containerData.container_type}
+                    onChange={e => setContainerData({...containerData, container_type: e.target.value})}
+                  >
+                    <option value="Dry">Dry</option>
+                    <option value="Reefer">Reefer</option>
+                    <option value="Open Top">Open Top</option>
+                    <option value="Flat Rack">Flat Rack</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">No Segel (Seal)</label>
+                  <input
+                    type="text"
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    value={containerData.seal_number}
+                    onChange={e => setContainerData({...containerData, seal_number: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Berat Kotor (kg)</label>
+                  <input
+                    type="number"
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    value={containerData.gross_weight}
+                    onChange={e => setContainerData({...containerData, gross_weight: e.target.value})}
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowContainerDialog(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
+                >
+                  Buat Container (Kirim Tx)
                 </button>
               </div>
             </form>
