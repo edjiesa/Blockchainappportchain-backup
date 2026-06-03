@@ -211,10 +211,10 @@ export function BlockchainExplorer() {
               ) : (
                 paginatedTxs.map((tx, idx) => (
                   <tr key={tx.tx_id || idx} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 max-w-xs">
                       <div className="flex items-center gap-2">
-                        <Database className="w-4 h-4 text-blue-600" />
-                        <span className="font-mono text-sm text-gray-900">{tx.tx_id ? tx.tx_id.substring(0, 16) : 'N/A'}...</span>
+                        <Database className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                        <span className="font-mono text-xs text-gray-900 break-all" title={tx.tx_id}>{tx.tx_id || 'N/A'}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 font-mono font-medium text-gray-900">#{tx.block_number}</td>
