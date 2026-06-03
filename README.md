@@ -60,28 +60,30 @@
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/edjiesa/RESPONSI-BLOCKCHAIN.git
-cd RESPONSI-BLOCKCHAIN
+git clone https://github.com/edjiesa/Blockchainappportchain.git
+cd Blockchainappportchain
 ```
 
 ### 2. Jalankan Seluruh Stack (1 Perintah)
 
-```powershell
+Buka terminal Ubuntu (WSL) Anda, lalu jalankan:
+
+```bash
 cd fabric-local
-.\start-fabric.ps1
+./start-fabric.sh
 ```
 
-Atau langsung dengan Docker Compose:
+Atau jika Anda hanya me-restart komputer dan data sudah ada, gunakan:
 
-```powershell
+```bash
 cd fabric-local
-docker-compose up -d --build
+./resume-fabric.sh
 ```
 
-> ⚠️ **Catatan Penting:** Karena ini adalah arsitektur baru (Go Backend & 3-Org Fabric), Anda diwajibkan menggunakan `--build` untuk mengkompilasi Go binary dan me-reset kontainer lama.
+> ⚠️ **Catatan Penting:** Karena ini adalah arsitektur baru (Go Backend & 3-Org Fabric), Anda diwajibkan menggunakan sistem berbasis Unix (seperti WSL Ubuntu di Windows).
 
-> ⏳ **Pertama kali** butuh waktu **5-10 menit** untuk download image dan install dependencies.
-> Selanjutnya hanya perlu **30-60 detik**.
+> ⏳ **Pertama kali (start-fabric)** butuh waktu **5-10 menit** untuk download image dan install dependencies.
+> Selanjutnya (resume-fabric) hanya perlu **10-20 detik**.
 
 ### 3. Tunggu Semua Container Siap
 
