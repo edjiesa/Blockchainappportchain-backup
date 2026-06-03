@@ -266,7 +266,7 @@ func handleRegisterUser(params json.RawMessage) (interface{}, interface{}) {
 		return nil, map[string]string{"code": "-32602", "message": "Invalid params"}
 	}
 
-	txID := strings.ReplaceAll(uuid.New().String()+uuid.New().String(), "-", "")
+	txID := strings.ReplaceAll(uuid.New().String()+uuid.New().String(), "-", "")[:40]
 
 	// Insert into DB
 	_, err := db.Exec(`
@@ -457,7 +457,7 @@ func handleUploadDocument(params json.RawMessage) (interface{}, interface{}) {
 	}
 
 	docID := "doc-" + uuid.New().String()[:8]
-	txID := strings.ReplaceAll(uuid.New().String()+uuid.New().String(), "-", "")
+	txID := strings.ReplaceAll(uuid.New().String()+uuid.New().String(), "-", "")[:40]
 	hashID := "hash-" + uuid.New().String()[:8]
 	docHash := uuid.New().String() // Simulated SHA-256
 
@@ -503,7 +503,7 @@ func handleUploadDocument(params json.RawMessage) (interface{}, interface{}) {
 	// 4. Auto-mint EBL Token if Document is a Bill of Lading
 	if input.DocumentType == "Bill of Lading" {
 		eblID := "ebl-" + uuid.New().String()[:8]
-		eblTxID := strings.ReplaceAll(uuid.New().String()+uuid.New().String(), "-", "")
+		eblTxID := strings.ReplaceAll(uuid.New().String()+uuid.New().String(), "-", "")[:40]
 		orgID := "org-001" // Default issuer
 
 		// Invoke EBL Smart Contract
@@ -599,7 +599,7 @@ func handleTransferEBLToken(params json.RawMessage) (interface{}, interface{}) {
 		return nil, map[string]string{"code": "-32602", "message": "Invalid params"}
 	}
 
-	txID := strings.ReplaceAll(uuid.New().String()+uuid.New().String(), "-", "")
+	txID := strings.ReplaceAll(uuid.New().String()+uuid.New().String(), "-", "")[:40]
 	transferID := "trf-" + uuid.New().String()[:8]
 
 	var eblID, fromOrgID string
@@ -659,7 +659,7 @@ func handleCreateCustomsClearance(params json.RawMessage) (interface{}, interfac
 	}
 
 	cID := "cc-" + uuid.New().String()[:8]
-	txID := strings.ReplaceAll(uuid.New().String()+uuid.New().String(), "-", "")
+	txID := strings.ReplaceAll(uuid.New().String()+uuid.New().String(), "-", "")[:40]
 
 	// Invoke Real Blockchain Smart Contract
 	fabricArgs := []interface{}{cID, input.ShipmentID, input.PibNumber}
@@ -749,7 +749,7 @@ func handleCreateContainer(params json.RawMessage) (interface{}, interface{}) {
 	}
 
 	containerID := "cont-" + uuid.New().String()[:8]
-	txID := strings.ReplaceAll(uuid.New().String()+uuid.New().String(), "-", "")
+	txID := strings.ReplaceAll(uuid.New().String()+uuid.New().String(), "-", "")[:40]
 
 	// Invoke Real Blockchain Smart Contract
 	// CreateContainer(ctx, containerId, shipmentId, containerNumber, size, type)
@@ -800,7 +800,7 @@ func handleCreateShipment(params json.RawMessage) (interface{}, interface{}) {
 
 	shipmentID := uuid.New().String()
 	orgID := "org-001" // Default for port admin
-	txID := strings.ReplaceAll(uuid.New().String()+uuid.New().String(), "-", "")
+	txID := strings.ReplaceAll(uuid.New().String()+uuid.New().String(), "-", "")[:40]
 
 	// Invoke Real Blockchain Smart Contract
 	fabricArgs := []interface{}{shipmentID, orgID, input.ShipmentCode, input.ExporterName, input.ImporterName}
