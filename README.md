@@ -109,11 +109,21 @@ portchain-db     Up X minutes (healthy)    0.0.0.0:5432->5432
 | 🔗 **[http://localhost:3001/api/status](http://localhost:3001/api/status)** | Status Koneksi Backend |
 | ⛓️ **[http://localhost:8080/ak/api/v1/components](http://localhost:8080/ak/api/v1/components)** | Microfab API Explorer |
 
-### 5. Hentikan Sistem
+### 5. Membuka Akses ke Internet (Ngrok)
+
+Jika Anda perlu mempresentasikan UI (Frontend) ke dosen/reviewer lewat internet tanpa harus repot *deploy* ke *cloud*, jalankan perintah ini di terminal **Windows PowerShell** Anda (buka tab terminal baru di folder `Blockchainappportchain`):
 
 ```powershell
+npm run ngrok
+```
+
+Sistem akan otomatis mengunduh Ngrok dan mem-*forward* port 5173 menjadi *link* publik sementara (misal: `https://xxxx-xxx.ngrok.app`).
+
+### 6. Hentikan Sistem
+
+```bash
 cd fabric-local
-.\stop-fabric.ps1
+./stop-fabric.sh
 ```
 
 ---
@@ -125,8 +135,9 @@ Blockchainappportchain/
 │
 ├── 📂 fabric-local/              # Konfigurasi Docker & Blockchain
 │   ├── docker-compose.yaml       # Orkestrasi 4 layanan
-│   ├── start-fabric.ps1          # Script startup (Windows PowerShell)
-│   ├── stop-fabric.ps1           # Script shutdown
+│   ├── start-fabric.sh           # Script startup (Linux/WSL)
+│   ├── stop-fabric.sh            # Script shutdown (Linux/WSL)
+│   ├── resume-fabric.sh          # Script restart (Linux/WSL)
 │   └── README.md                 # Dokumentasi teknis jaringan
 │
 ├── 📂 backend-go/                # Go (Golang) Middleware
