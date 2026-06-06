@@ -60,7 +60,7 @@ export function Root() {
             </div>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-1 flex-1 justify-center">
+            <nav className="hidden lg:flex items-center gap-4 flex-1 justify-center px-4 overflow-x-auto">
               {navigation.map((item) => {
                 const isActive = location.pathname === item.path;
                 const Icon = item.icon;
@@ -82,7 +82,7 @@ export function Root() {
             </nav>
 
             {/* User Profile & Logout (Desktop) */}
-            <div className="hidden md:flex items-center gap-4 border-l border-blue-500 pl-4">
+            <div className="hidden lg:flex items-center gap-4 border-l border-blue-500 pl-4">
               <div className="flex items-center gap-2 text-white">
                 <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
                   <UserIcon className="w-4 h-4" />
@@ -104,7 +104,7 @@ export function Root() {
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg hover:bg-blue-700 text-white"
+              className="lg:hidden p-2 rounded-lg hover:bg-blue-700 text-white"
             >
               {mobileMenuOpen ? (
                 <X className="w-6 h-6" />
@@ -117,7 +117,7 @@ export function Root() {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-blue-700 bg-blue-700 pb-4">
+          <div className="lg:hidden border-t border-blue-700 bg-blue-700 pb-4 shadow-inner">
             <div className="px-4 pt-4 pb-2 border-b border-blue-600 mb-2 flex items-center justify-between text-white">
                <div className="flex items-center gap-3">
                  <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
