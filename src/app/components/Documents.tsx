@@ -102,9 +102,29 @@ export function Documents() {
   const documentTypes = ['Bill of Lading', 'Commercial Invoice', 'Packing List', 'Certificate of Origin', 'Customs Declaration', 'Insurance Certificate'];
 
   const [viewingDoc, setViewingDoc] = useState<any>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   const handleView = (doc: any) => {
     setViewingDoc(doc);
+    if (doc.file_data && doc.file_data.startsWith('data:application/pdf')) {
+      try {
+        // Convert Base64 to Blob URL to fix Google Chrome data URI limits/blocking
+        const base64Data = doc.file_data.split(',')[1];
+        const byteString = atob(base64Data);
+        const arrayBuffer = new ArrayBuffer(byteString.length);
+        const uint8Array = new Uint8Array(arrayBuffer);
+        for (let i = 0; i < byteString.length; i++) {
+          uint8Array[i] = byteString.charCodeAt(i);
+        }
+        const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+        setPdfUrl(URL.createObjectURL(blob));
+      } catch (e) {
+        console.error("Error creating PDF blob", e);
+        setPdfUrl(doc.file_data); // fallback
+      }
+    } else {
+      setPdfUrl(null);
+    }
   };
 
   const handleDownload = (doc: any) => {
@@ -379,7 +399,11 @@ export function Documents() {
                 <button onClick={() => handleDownload(viewingDoc)} className="text-gray-300 hover:text-white transition-colors">
                   <Download className="w-5 h-5" />
                 </button>
-                <button onClick={() => setViewingDoc(null)} className="text-gray-300 hover:text-white transition-colors">
+                <button onClick={() => {
+                  if (pdfUrl && pdfUrl.startsWith('blob:')) URL.revokeObjectURL(pdfUrl);
+                  setPdfUrl(null);
+                  setViewingDoc(null);
+                }} className="text-gray-300 hover:text-white transition-colors">
                   <span className="text-2xl leading-none">&times;</span>
                 </button>
               </div>
@@ -389,7 +413,7 @@ export function Documents() {
             <div className="flex-1 bg-gray-100 overflow-y-auto p-8 flex justify-center">
               {viewingDoc.file_data && viewingDoc.file_data.startsWith('data:application/pdf') ? (
                 <div className="w-full h-full flex flex-col bg-white shadow-lg">
-                  <iframe src={viewingDoc.file_data} className="w-full flex-1 border-0" title="PDF Document" />
+                  <iframe src={pdfUrl || viewingDoc.file_data} className="w-full flex-1 border-0" title="PDF Document" />
                   {/* Footer / Blockchain Verification */}
                   <div className="p-6 border-t border-gray-300 bg-gray-50">
                     <h4 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
