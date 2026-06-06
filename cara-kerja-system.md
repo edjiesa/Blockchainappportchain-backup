@@ -50,7 +50,23 @@ Ini adalah *core business logic* dari pelabuhan.
 
 ---
 
-## 📄 4. Manajemen Dokumen Cerdas (Hybrid Storage)
+## 🏦 4. Alur Kerja Perbankan (Trade Finance & Pembayaran)
+
+Organisasi Bank (`bankorg`) memiliki peran krusial dalam rantai pasok pelabuhan, khususnya dalam hal *Trade Finance* (Pembiayaan Perdagangan) seperti pencairan *Letter of Credit* (L/C).
+
+1. **Visibilitas Terbatas (Privacy by Design)**
+   - Berbeda dengan Port Authority atau Customs, Bank **tidak bisa** melihat seluruh data operasional pelabuhan (seperti daftar kontainer fisik atau detail dokumen manifest). Ini diatur melalui sistem otorisasi *Channel* dan *RBAC* di Hyperledger Fabric untuk menjaga kerahasiaan bisnis.
+2. **Menerima e-BL (Electronic Bill of Lading)**
+   - Peran utama Bank adalah pada menu **e-BL**.
+   - Ketika barang sudah diproses dan akan dikirim/diterima, kepemilikan dokumen pengiriman elektronik (e-BL) ditransfer dari Otoritas Pelabuhan/Shipping Line ke organisasi Bank.
+3. **Pencairan Dana (Settlement)**
+   - User Bank login dan memverifikasi bahwa token e-BL tersebut 100% asli dan tercatat di Blockchain tanpa manipulasi.
+   - Setelah yakin aset digital tersebut berada di *wallet* (kendali) Bank, Bank dapat memberikan persetujuan pencairan dana kepada pihak penjual (Eksportir).
+   - Seluruh proses transfer aset e-BL ini dicatat abadi di dalam Blockchain, sehingga menghilangkan risiko B/L ganda (*Double-spending*) atau B/L palsu.
+
+---
+
+## 📄 5. Manajemen Dokumen Cerdas (Hybrid Storage)
 
 Bagaimana cara sistem menyimpan file PDF Manifest atau Foto Kontainer ke dalam Blockchain? Jawabannya: **Tidak Ditaruh di Blockchain.**
 
@@ -63,7 +79,7 @@ Blockchain sangat mahal dan lambat jika digunakan untuk menyimpan file besar. Ol
 
 ---
 
-## 🪙 5. E-BL (Electronic Bill of Lading) / Tokenisasi
+## 🪙 6. E-BL (Electronic Bill of Lading) / Tokenisasi
 
 Ini adalah fitur finansial tingkat lanjut (Sistem yang mungkin belum Anda sadari seutuhnya).
 
@@ -78,7 +94,7 @@ B/L (Bill of Lading) adalah surat berharga. Jika pelabuhan menggunakan kertas, s
 
 ---
 
-## 🕵️ 6. Explorer & Audit Trail (Membuktikan Kebenaran Data)
+## 🕵️ 7. Explorer & Audit Trail (Membuktikan Kebenaran Data)
 
 Semua menu di atas berujung pada satu fitur pamungkas: **Audit Trail** dan **Blockchain Explorer**.
 
