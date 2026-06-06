@@ -110,14 +110,21 @@ portchain-db     Up X minutes (healthy)    0.0.0.0:5432->5432
 | 🔗 **[http://localhost:3001/api/status](http://localhost:3001/api/status)** | Status Koneksi Backend / Fabric Connector |
 | ⛓️ **[http://localhost:8080/ak/api/v1/components](http://localhost:8080/ak/api/v1/components)** | Microfab API Explorer (Core Node) |
 
-### 5. Login Pertama Kali (Super Admin / Port Authority)
+### 5. Akun Login (Role-Based Access Control)
 
-Karena sistem sekarang telah menerapkan **Role-Based Access Control (RBAC)**, Anda harus login untuk bisa mengakses menu.
-Gunakan kredensial bawaan berikut untuk login sebagai Super Admin (Port Authority):
+Karena sistem sekarang telah menerapkan **Role-Based Access Control (RBAC)**, Anda harus login untuk bisa mengakses menu sesuai dengan kewenangan organisasi Anda.
+
+Gunakan kredensial bawaan berikut untuk login:
+
+**1. Super Admin (Port Authority)**
 - **Email**: `admin@port.co.id`
 - **Password**: `admin123`
 
-Dari akun ini, Anda dapat pergi ke menu **Organizations -> Manage Users** untuk mendaftarkan akun baru bagi organisasi lain (seperti Customs atau Bank). Setiap akun yang didaftarkan akan disimpan di PostgreSQL dan direkam (log pendaftaran CA) ke dalam Blockchain.
+**2. Admin Bea Cukai (Customs)**
+- **Email**: `admin@beacukai.co.id`
+- **Password**: `admin123`
+
+Dari akun *Port Authority*, Anda dapat pergi ke menu **Organizations -> Manage Users** untuk mendaftarkan akun baru bagi organisasi lain. Setiap akun yang didaftarkan akan disimpan di PostgreSQL (Off-chain) dan direkam ke dalam Blockchain (On-chain) sebagai identitas resmi (Certificate Authority).
 
 ### 6. Membuka Akses ke Internet (Ngrok)
 
