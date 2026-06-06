@@ -105,9 +105,10 @@ portchain-db     Up X minutes (healthy)    0.0.0.0:5432->5432
 
 | URL | Keterangan |
 |-----|-----------|
-| 🌐 **[http://localhost:5173](http://localhost:5173)** | Aplikasi Frontend Utama |
-| 🔗 **[http://localhost:3001/api/status](http://localhost:3001/api/status)** | Status Koneksi Backend |
-| ⛓️ **[http://localhost:8080/ak/api/v1/components](http://localhost:8080/ak/api/v1/components)** | Microfab API Explorer |
+| 🌐 **[http://localhost:5173](http://localhost:5173)** | Aplikasi Frontend Utama (PortChain Dashboard) |
+| 👁️ **[http://localhost:8001](http://localhost:8001)** | **Fabric Live Monitor (Real-time Transaction Dashboard)** |
+| 🔗 **[http://localhost:3001/api/status](http://localhost:3001/api/status)** | Status Koneksi Backend / Fabric Connector |
+| ⛓️ **[http://localhost:8080/ak/api/v1/components](http://localhost:8080/ak/api/v1/components)** | Microfab API Explorer (Core Node) |
 
 ### 5. Membuka Akses ke Internet (Ngrok)
 
@@ -270,8 +271,13 @@ Aplikasi ini menyimpan *state* operasional di PostgreSQL. Anda dapat melihat buk
    -- (Ketik \q untuk keluar dari psql)
    ```
 
-### Opsi C: Cek Blockchain Melalui Microfab Node Explorer (On-Chain)
-Aplikasi menjalankan node Fabric lokal bernama `microfab`. Anda dapat berinteraksi langsung dengan API node tersebut untuk melihat blok yang tercipta.
+### Opsi C: Cek Blockchain Melalui Fabric Live Monitor (Port 8001)
+Sebagai cara termudah dan paling visual untuk melihat aktivitas *Smart Contract* Fabric, kami telah menyediakan **Fabric Live Monitor Dashboard**.
+1. Buka browser dan arahkan ke: **[http://localhost:8001](http://localhost:8001)**
+2. Halaman ini akan secara *real-time* menangkap dan menampilkan setiap interaksi (*Invoke*) yang terjadi ke Hyperledger Fabric. Anda akan melihat Argumen (*payload* JSON), Fungsi *Chaincode* (`CreateShipment`, `CreateContainer`, dll), serta status eksekusinya yang langsung dicatat ke dalam Ledger.
+
+### Opsi D: Cek Blockchain Melalui Microfab Node Explorer (On-Chain Raw)
+Aplikasi menjalankan node Fabric lokal bernama `microfab`. Anda dapat berinteraksi langsung dengan API node tersebut untuk melihat blok yang tercipta secara mentah.
 1. Buka browser dan arahkan ke: **[http://localhost:8080/ak/api/v1/components](http://localhost:8080/ak/api/v1/components)**
 2. Anda akan melihat struktur topologi dari 3 Organisasi (Port, Customs, Bank) dan Orderer Nodes.
 3. Node Microfab juga memungkinkan *shell execution* untuk melakukan perintah CLI Fabric bawaan (seperti `peer chaincode query ...`) jika Anda ingin melangkah lebih jauh mengeksplorasi Ledger-nya secara mentah (Raw).
