@@ -24,7 +24,7 @@ export function BlockchainExplorer() {
   const itemsPerPage = 15;
 
   const filteredTxs = transactions.filter(tx =>
-    (tx.tx_id && tx.tx_id.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (tx.blockchain_tx_id && tx.blockchain_tx_id.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (tx.chaincode_name && tx.chaincode_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (tx.function_name && tx.function_name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
@@ -210,11 +210,11 @@ export function BlockchainExplorer() {
                 </tr>
               ) : (
                 paginatedTxs.map((tx, idx) => (
-                  <tr key={tx.tx_id || idx} className="hover:bg-gray-50 transition-colors">
+                  <tr key={tx.blockchain_tx_id || idx} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 max-w-xs">
                       <div className="flex items-center gap-2">
                         <Database className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                        <span className="font-mono text-xs text-gray-900 break-all" title={tx.tx_id}>{tx.tx_id || 'N/A'}</span>
+                        <span className="font-mono text-xs text-gray-900 break-all" title={tx.blockchain_tx_id}>{tx.blockchain_tx_id || 'N/A'}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 font-mono font-medium text-gray-900">#{tx.block_number}</td>
