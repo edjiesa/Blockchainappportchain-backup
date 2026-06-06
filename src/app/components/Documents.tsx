@@ -53,7 +53,26 @@ export function Documents() {
 
   const handleUploadDocument = async (e: React.FormEvent) => {
     e.preventDefault();
-    const formData = new FormData(e.target as HTMLFormElement);
+    const form = e.target as HTMLFormElement;
+    const formData = new FormData(form);
+    
+    const fileInput = form.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = fileInput.files?.[0];
+    
+    let fileData = "";
+    let fileName = "";
+    
+    if (file) {
+      fileName = file.name;
+      // Convert file to base64
+      fileData = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = error => reject(error);
+      });
+    }
+
     try {
       await fetch(`${API_URL}/rpc`, {
         method: 'POST',
@@ -64,7 +83,9 @@ export function Documents() {
           params: { 
             shipment_id: formData.get('shipment_id'), 
             document_type: formData.get('document_type'),
-            document_category: formData.get('document_category')
+            document_category: formData.get('document_category'),
+            file_data: fileData,
+            file_name: fileName
           },
           id: Date.now()
         })
@@ -366,6 +387,49 @@ export function Documents() {
             
             {/* The "PDF" Content */}
             <div className="flex-1 bg-gray-100 overflow-y-auto p-8 flex justify-center">
+              {viewingDoc.file_data && viewingDoc.file_data.startsWith('data:application/pdf') ? (
+                <div className="w-full h-full flex flex-col bg-white shadow-lg">
+                  <iframe src={viewingDoc.file_data} className="w-full flex-1 border-0" title="PDF Document" />
+                  {/* Footer / Blockchain Verification */}
+                  <div className="p-6 border-t border-gray-300 bg-gray-50">
+                    <h4 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <Database className="w-4 h-4 text-blue-600" />
+                      Cryptographic Verification (Hyperledger Fabric)
+                    </h4>
+                    <div className="space-y-3 bg-blue-50/50 p-4 rounded border border-blue-100">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase font-semibold">Document Hash (SHA-256)</p>
+                        <p className="font-mono text-xs text-blue-900 break-all">{viewingDoc.document_hash_value || "Menunggu proses hashing..."}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase font-semibold">On-Chain Transaction ID</p>
+                        <p className="font-mono text-xs text-green-700 break-all">{viewingDoc.blockchain_tx_id || "Sinkronisasi ke node Fabric..."}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : viewingDoc.file_data && viewingDoc.file_data.startsWith('data:image/') ? (
+                <div className="w-full h-full flex flex-col bg-white shadow-lg items-center">
+                  <img src={viewingDoc.file_data} alt="Document" className="max-w-full max-h-[70vh] object-contain p-4" />
+                  {/* Footer / Blockchain Verification */}
+                  <div className="p-6 border-t border-gray-300 bg-gray-50 w-full mt-auto">
+                    <h4 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <Database className="w-4 h-4 text-blue-600" />
+                      Cryptographic Verification (Hyperledger Fabric)
+                    </h4>
+                    <div className="space-y-3 bg-blue-50/50 p-4 rounded border border-blue-100">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase font-semibold">Document Hash (SHA-256)</p>
+                        <p className="font-mono text-xs text-blue-900 break-all">{viewingDoc.document_hash_value || "Menunggu proses hashing..."}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase font-semibold">On-Chain Transaction ID</p>
+                        <p className="font-mono text-xs text-green-700 break-all">{viewingDoc.blockchain_tx_id || "Sinkronisasi ke node Fabric..."}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
               <div className="bg-white w-[210mm] min-h-[297mm] shadow-lg p-12 relative flex flex-col">
                 {/* Watermark / Seal */}
                 <div className="absolute top-12 right-12 w-32 h-32 border-4 border-blue-100 rounded-full flex items-center justify-center opacity-80 rotate-12">
@@ -424,6 +488,7 @@ export function Documents() {
                   </div>
                 </div>
               </div>
+              )}
             </div>
           </div>
         </div>

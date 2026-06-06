@@ -436,10 +436,12 @@ func handleGetDocuments() (interface{}, interface{}) {
 			d.document_id, d.shipment_id, d.document_type, d.document_title, 
 			d.document_version, d.issued_at,
 			h.document_hash_value,
-			bt.blockchain_tx_id
+			bt.blockchain_tx_id,
+			df.file_data
 		FROM documents d
 		LEFT JOIN document_hashes h ON d.document_id = h.document_id
 		LEFT JOIN blockchain_transactions bt ON d.document_id = bt.entity_id AND bt.transaction_type = 'UploadDocument'
+		LEFT JOIN document_files df ON d.document_id = df.document_id
 		ORDER BY d.issued_at DESC
 	`)
 	if err != nil {
@@ -452,10 +454,10 @@ func handleGetDocuments() (interface{}, interface{}) {
 	for rows.Next() {
 		var (
 			dID, sID, dType, dTitle, dVer sql.NullString
-			hVal, btTxID                  sql.NullString
+			hVal, btTxID, fData           sql.NullString
 			issuedAt                      time.Time
 		)
-		if err := rows.Scan(&dID, &sID, &dType, &dTitle, &dVer, &issuedAt, &hVal, &btTxID); err == nil {
+		if err := rows.Scan(&dID, &sID, &dType, &dTitle, &dVer, &issuedAt, &hVal, &btTxID, &fData); err == nil {
 			btTxIDStr := btTxID.String
 			if btTxIDStr == "" {
 				btTxIDStr = "Pending / Old Record"
@@ -468,6 +470,7 @@ func handleGetDocuments() (interface{}, interface{}) {
 				"document_version":    dVer.String,
 				"document_hash_value": hVal.String,
 				"blockchain_tx_id":    btTxIDStr,
+				"file_data":           fData.String,
 				"issued_date":         issuedAt,
 			})
 		}
@@ -483,6 +486,8 @@ func handleUploadDocument(params json.RawMessage) (interface{}, interface{}) {
 		ShipmentID       string `json:"shipment_id"`
 		DocumentType     string `json:"document_type"`
 		DocumentCategory string `json:"document_category"` // Maps to document_title for simplicity in UI mapping
+		FileData         string `json:"file_data"`
+		FileName         string `json:"file_name"`
 	}
 	if err := json.Unmarshal(params, &input); err != nil {
 		return nil, map[string]string{"code": "-32602", "message": "Invalid params"}
@@ -530,6 +535,18 @@ func handleUploadDocument(params json.RawMessage) (interface{}, interface{}) {
 	if err != nil {
 		log.Printf("DB Insert Document Hash Error: %v", err)
 		return nil, map[string]string{"code": "-32001", "message": "Failed to insert document hash"}
+	}
+
+	// 3b. Insert Document File
+	if input.FileData != "" {
+		fileID := "file-" + uuid.New().String()[:8]
+		_, err = db.Exec(`
+			INSERT INTO document_files (file_id, document_id, original_file_name, file_data)
+			VALUES ($1, $2, $3, $4)
+		`, fileID, docID, input.FileName, input.FileData)
+		if err != nil {
+			log.Printf("DB Insert Document File Error: %v", err)
+		}
 	}
 
 	// 4. Auto-mint EBL Token if Document is a Bill of Lading
