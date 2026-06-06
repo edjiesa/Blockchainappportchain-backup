@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation } from "react-router";
+import { Outlet, Link, useLocation, useNavigate } from "react-router";
 import { 
   Anchor, 
   Activity, 
@@ -9,24 +9,39 @@ import {
   Database,
   Shield,
   Menu,
-  X 
+  X,
+  LogOut,
+  User as UserIcon
 } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
 
 export function Root() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
 
-  const navigation = [
-    { name: 'Dashboard', path: '/', icon: Activity },
-    { name: 'Shipments', path: '/shipments', icon: Anchor },
-    { name: 'Customs', path: '/customs', icon: Shield },
-    { name: 'Documents', path: '/documents', icon: FileText },
-    { name: 'e-BL', path: '/ebl', icon: Receipt },
-    { name: 'Organizations', path: '/organizations', icon: Building2 },
-    { name: 'Blockchain', path: '/blockchain', icon: Database },
-    { name: 'Audit Trail', path: '/audit', icon: FileCheck },
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const allNavigation = [
+    { name: 'Dashboard', path: '/', icon: Activity, roles: ['Port Authority', 'Customs', 'Banking'] },
+    { name: 'Shipments', path: '/shipments', icon: Anchor, roles: ['Port Authority', 'Customs'] },
+    { name: 'Customs', path: '/customs', icon: Shield, roles: ['Port Authority', 'Customs'] },
+    { name: 'Documents', path: '/documents', icon: FileText, roles: ['Port Authority', 'Customs'] },
+    { name: 'e-BL', path: '/ebl', icon: Receipt, roles: ['Port Authority', 'Banking'] },
+    { name: 'Organizations', path: '/organizations', icon: Building2, roles: ['Port Authority'] },
+    { name: 'Blockchain', path: '/blockchain', icon: Database, roles: ['Port Authority', 'Customs', 'Banking'] },
+    { name: 'Audit Trail', path: '/audit', icon: FileCheck, roles: ['Port Authority', 'Customs'] },
   ];
+
+  // Filter navigation based on user's organization type
+  const navigation = allNavigation.filter(item => 
+    user && item.roles.includes(user.organization_type)
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -40,12 +55,12 @@ export function Root() {
               </div>
               <div>
                 <h1 className="font-bold text-xl text-white">PortChain</h1>
-                <p className="text-xs text-blue-100">Hyperledger Fabric Port Licensing System</p>
+                <p className="text-xs text-blue-100">Hyperledger Fabric Multi-Org</p>
               </div>
             </div>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-1">
+            <nav className="hidden md:flex items-center gap-1 flex-1 justify-center">
               {navigation.map((item) => {
                 const isActive = location.pathname === item.path;
                 const Icon = item.icon;
@@ -66,6 +81,26 @@ export function Root() {
               })}
             </nav>
 
+            {/* User Profile & Logout (Desktop) */}
+            <div className="hidden md:flex items-center gap-4 border-l border-blue-500 pl-4">
+              <div className="flex items-center gap-2 text-white">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                  <UserIcon className="w-4 h-4" />
+                </div>
+                <div className="text-sm">
+                  <p className="font-bold leading-none">{user?.full_name}</p>
+                  <p className="text-xs text-blue-200 mt-0.5">{user?.organization_name}</p>
+                </div>
+              </div>
+              <button 
+                onClick={handleLogout}
+                className="p-2 text-blue-100 hover:bg-blue-700 hover:text-white rounded-lg transition-colors"
+                title="Logout"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
+
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -82,7 +117,19 @@ export function Root() {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-blue-700 bg-blue-700">
+          <div className="md:hidden border-t border-blue-700 bg-blue-700 pb-4">
+            <div className="px-4 pt-4 pb-2 border-b border-blue-600 mb-2 flex items-center justify-between text-white">
+               <div className="flex items-center gap-3">
+                 <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                   <UserIcon className="w-5 h-5" />
+                 </div>
+                 <div>
+                   <p className="font-bold">{user?.full_name}</p>
+                   <p className="text-xs text-blue-200">{user?.organization_name}</p>
+                 </div>
+               </div>
+               <button onClick={handleLogout} className="p-2 text-white bg-red-500 rounded-lg"><LogOut className="w-5 h-5" /></button>
+            </div>
             <nav className="px-4 py-2 space-y-1">
               {navigation.map((item) => {
                 const isActive = location.pathname === item.path;

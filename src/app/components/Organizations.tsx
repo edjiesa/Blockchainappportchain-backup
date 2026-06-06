@@ -46,6 +46,7 @@ export function Organizations() {
       username: formData.get('username') as string,
       email: formData.get('email') as string,
       role_name: formData.get('role') as string,
+      password: formData.get('password') as string,
     };
     
     try {
@@ -306,13 +307,19 @@ export function Organizations() {
                     </button>
                   </div>
                   <form onSubmit={handleRegisterUser} className="space-y-4 bg-gray-50 p-5 rounded-xl border border-gray-100">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Username / Enrollment ID</label>
-                      <input type="text" name="username" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600" placeholder="e.g. admin_bank" />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                        <input type="text" name="username" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600" placeholder="e.g. John Doe" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                        <input type="email" name="email" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600" placeholder="e.g. user@port.co.id" />
+                      </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                      <input type="email" name="email" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600" placeholder="e.g. admin@banking.com" />
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                      <input type="password" name="password" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600" placeholder="Set a secure password" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>

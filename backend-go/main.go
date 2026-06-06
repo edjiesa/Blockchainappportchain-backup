@@ -126,6 +126,8 @@ func rpcHandler(w http.ResponseWriter, r *http.Request) {
 		result, errObj = handleGetDashboardStats()
 	case "RegisterUser":
 		result, errObj = handleRegisterUser(req.Params)
+	case "LoginUser":
+		result, errObj = handleLoginUser(req.Params)
 	case "GetUsers":
 		result, errObj = handleGetUsers()
 	case "GetCustomsClearances":
@@ -286,6 +288,7 @@ func handleRegisterUser(params json.RawMessage) (interface{}, interface{}) {
 		Username       string `json:"username"`
 		Email          string `json:"email"`
 		RoleName       string `json:"role_name"`
+		Password       string `json:"password"`
 	}
 	if err := json.Unmarshal(params, &input); err != nil {
 		return nil, map[string]string{"code": "-32602", "message": "Invalid params"}
@@ -295,9 +298,9 @@ func handleRegisterUser(params json.RawMessage) (interface{}, interface{}) {
 
 	// Insert into DB
 	_, err := db.Exec(`
-		INSERT INTO users (user_id, organization_id, full_name, email, role_name, is_active)
-		VALUES ($1, $2, $3, $4, $5, true)
-	`, input.UserID, input.OrganizationID, input.Username, input.Email, input.RoleName)
+		INSERT INTO users (user_id, organization_id, full_name, email, role_name, password_hash, is_active)
+		VALUES ($1, $2, $3, $4, $5, $6, true)
+	`, input.UserID, input.OrganizationID, input.Username, input.Email, input.RoleName, input.Password) // Using plain string for prototype demo
 	if err != nil {
 		log.Printf("DB Insert Error: %v", err)
 		return nil, map[string]string{"code": "-32001", "message": "Failed to insert into database"}
@@ -313,6 +316,56 @@ func handleRegisterUser(params json.RawMessage) (interface{}, interface{}) {
 		"success": true,
 		"message": "User registered successfully",
 		"tx_id":   txID,
+	}, nil
+}
+
+func handleLoginUser(params json.RawMessage) (interface{}, interface{}) {
+	var input struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	if err := json.Unmarshal(params, &input); err != nil {
+		return nil, map[string]string{"code": "-32602", "message": "Invalid params"}
+	}
+
+	var user struct {
+		UserID          string `json:"user_id"`
+		Email           string `json:"email"`
+		FullName        string `json:"full_name"`
+		RoleName        string `json:"role_name"`
+		OrganizationID  string `json:"organization_id"`
+		OrganizationType string `json:"organization_type"`
+		OrganizationName string `json:"organization_name"`
+	}
+	var dbPassword string
+
+	err := db.QueryRow(`
+		SELECT u.user_id, u.email, u.full_name, u.role_name, u.password_hash, u.organization_id, o.organization_type, o.organization_name
+		FROM users u
+		JOIN organizations o ON u.organization_id = o.organization_id
+		WHERE u.email = $1 AND u.is_active = true
+	`, input.Email).Scan(&user.UserID, &user.Email, &user.FullName, &user.RoleName, &dbPassword, &user.OrganizationID, &user.OrganizationType, &user.OrganizationName)
+
+	if err != nil {
+		log.Printf("Login error: %v", err)
+		return nil, map[string]string{"code": "-32004", "message": "Invalid email or password"}
+	}
+
+	if dbPassword != input.Password {
+		return nil, map[string]string{"code": "-32004", "message": "Invalid email or password"}
+	}
+
+	return map[string]interface{}{
+		"success": true,
+		"user": map[string]interface{}{
+			"user_id": user.UserID,
+			"email": user.Email,
+			"full_name": user.FullName,
+			"role_name": user.RoleName,
+			"organization_id": user.OrganizationID,
+			"organization_type": user.OrganizationType,
+			"organization_name": user.OrganizationName,
+		},
 	}, nil
 }
 

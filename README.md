@@ -110,7 +110,16 @@ portchain-db     Up X minutes (healthy)    0.0.0.0:5432->5432
 | 🔗 **[http://localhost:3001/api/status](http://localhost:3001/api/status)** | Status Koneksi Backend / Fabric Connector |
 | ⛓️ **[http://localhost:8080/ak/api/v1/components](http://localhost:8080/ak/api/v1/components)** | Microfab API Explorer (Core Node) |
 
-### 5. Membuka Akses ke Internet (Ngrok)
+### 5. Login Pertama Kali (Super Admin / Port Authority)
+
+Karena sistem sekarang telah menerapkan **Role-Based Access Control (RBAC)**, Anda harus login untuk bisa mengakses menu.
+Gunakan kredensial bawaan berikut untuk login sebagai Super Admin (Port Authority):
+- **Email**: `admin@port.co.id`
+- **Password**: `admin123`
+
+Dari akun ini, Anda dapat pergi ke menu **Organizations -> Manage Users** untuk mendaftarkan akun baru bagi organisasi lain (seperti Customs atau Bank). Setiap akun yang didaftarkan akan disimpan di PostgreSQL dan direkam (log pendaftaran CA) ke dalam Blockchain.
+
+### 6. Membuka Akses ke Internet (Ngrok)
 
 Jika Anda perlu mempresentasikan UI (Frontend) ke dosen/reviewer lewat internet tanpa harus repot *deploy* ke *cloud*, jalankan perintah ini di terminal **Windows PowerShell** Anda (buka tab terminal baru di folder `Blockchainappportchain`):
 
@@ -120,7 +129,7 @@ npm run ngrok
 
 Sistem akan otomatis mengunduh Ngrok dan mem-*forward* port 5173 menjadi *link* publik sementara (misal: `https://xxxx-xxx.ngrok.app`).
 
-### 6. Hentikan Sistem
+### 7. Hentikan Sistem
 
 ```bash
 cd fabric-local
