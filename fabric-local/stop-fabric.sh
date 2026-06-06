@@ -1,6 +1,6 @@
 #!/bin/bash
-echo "Menghentikan PortChain Enterprise Stack..."
+echo "Menghentikan sementara PortChain Enterprise Stack..."
 
-docker compose down -v
+docker compose stop
 
-echo "Selesai! Seluruh kontainer, network, dan data (volume) telah dihapus secara permanen."
+echo "Selesai! Seluruh kontainer telah dimatikan, namun DATA (PostgreSQL & Blockchain) TETAP AMAN."

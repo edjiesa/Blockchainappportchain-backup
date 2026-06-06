@@ -137,11 +137,23 @@ npm run ngrok
 
 Sistem akan otomatis mengunduh Ngrok dan mem-*forward* port 5173 menjadi *link* publik sementara (misal: `https://xxxx-xxx.ngrok.app`).
 
-### 7. Hentikan Sistem
+### 7. Hentikan Sistem (Pause / Stop)
+
+Jika Anda ingin beristirahat atau mematikan komputer **tanpa menghapus data** Blockchain & PostgreSQL:
 
 ```bash
 cd fabric-local
 ./stop-fabric.sh
+```
+*Note: Untuk menyalakannya kembali, cukup jalankan `./resume-fabric.sh`*
+
+### 8. Reset / Hapus Seluruh Data (Destroy)
+
+Jika Anda ingin **menghapus semua data secara permanen** (mereset jaringan blockchain, menghapus database, dsb):
+
+```bash
+cd fabric-local
+./destroy.sh
 ```
 
 ---
