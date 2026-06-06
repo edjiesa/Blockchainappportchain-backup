@@ -60,6 +60,16 @@ app.post('/api/invoke', async (req, res) => {
     try {
         const { chaincode, functionName, args } = req.body;
         console.log("INVOKE BODY:", req.body);
+        
+        // Simpan log ke memory untuk ditampilkan di Monitor UI (Port 8001)
+        invocationLogs.unshift({
+            timestamp: new Date().toISOString(),
+            chaincode,
+            functionName,
+            args: args || []
+        });
+        if (invocationLogs.length > 100) invocationLogs.pop(); // Batasi 100 log terakhir
+
         if (!chaincode || !functionName)
             return res.status(400).json({ error: 'chaincode dan functionName wajib diisi' });
 
@@ -232,6 +242,8 @@ app.get('/api/audit', async (req, res) => {
 });
 
 // ─── START SERVER ────────────────────────────────────
+const invocationLogs = [];
+
 app.listen(PORT, async () => {
     console.log(`\n================================`);
     console.log(`Backend API berjalan di port ${PORT}`);
@@ -256,4 +268,72 @@ app.listen(PORT, async () => {
         }
     };
     connectFabric();
+});
+
+// ─── BLOCKCHAIN MONITOR (PORT 8001) ─────────────────
+const monitorApp = express();
+monitorApp.use(cors());
+
+monitorApp.get('/', (req, res) => {
+    res.send(`
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Fabric Connector Monitor</title>
+        <style>
+            body { font-family: 'Segoe UI', monospace; background: #0d1117; color: #c9d1d9; padding: 20px; }
+            h1 { color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+            .log-card { background: #161b22; border: 1px solid #30363d; padding: 15px; margin-bottom: 15px; border-radius: 6px; }
+            .badge { background: #1f6feb; color: #ffffff; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 14px;}
+            .time { color: #8b949e; }
+            pre { margin: 15px 0 0 0; color: #79c0ff; white-space: pre-wrap; background: #0d1117; padding: 10px; border-radius: 4px; border: 1px solid #30363d;}
+        </style>
+        <script>
+            async function fetchLogs() {
+                try {
+                    const response = await fetch('/api/logs');
+                    const logs = await response.json();
+                    const container = document.getElementById('logs-container');
+                    container.innerHTML = '';
+                    if (logs.length === 0) {
+                        container.innerHTML = '<p>Belum ada transaksi (INVOKE) yang tercatat sejak Fabric Connector di-restart.</p>';
+                    }
+                    logs.forEach(log => {
+                        const div = document.createElement('div');
+                        div.className = 'log-card';
+                        div.innerHTML = \`
+                            <div>
+                                <span class="badge">\${log.functionName}</span>
+                                <span style="margin-left:15px; font-weight:bold; color: #e6edf3;">Chaincode: \${log.chaincode}</span>
+                                <span class="time" style="float:right;">\${new Date(log.timestamp).toLocaleString('id-ID')}</span>
+                            </div>
+                            <pre>Args: \${JSON.stringify(log.args, null, 2)}</pre>
+                        \`;
+                        container.appendChild(div);
+                    });
+                } catch (err) {
+                    console.error('Error fetching logs', err);
+                }
+            }
+            setInterval(fetchLogs, 2000);
+            window.onload = fetchLogs;
+        </script>
+    </head>
+    <body>
+        <h1>Live Fabric Connector & Microfab Invocations</h1>
+        <p style="color:#8b949e;">Halaman ini secara *real-time* menampilkan log transaksi (INVOKE) yang berhasil dilempar ke jaringan Hyperledger Fabric.</p>
+        <div id="logs-container">Memuat log...</div>
+    </body>
+    </html>
+    `);
+});
+
+monitorApp.get('/api/logs', (req, res) => {
+    res.json(invocationLogs);
+});
+
+monitorApp.listen(8001, () => {
+    console.log('Fabric Monitor UI berjalan di port 8001');
 });
