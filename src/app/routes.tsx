@@ -24,14 +24,13 @@ function ProtectedRoute() {
 export const router = createBrowserRouter([
   {
     path: "/login",
-    Component: Login,
+    element: <Login />,
   },
   {
     path: "/",
     Component: Root,
     children: [
       {
-        path: "/",
         Component: ProtectedRoute,
         children: [
           { index: true, Component: Dashboard },
