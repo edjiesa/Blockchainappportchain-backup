@@ -71,6 +71,7 @@ Buka terminal Ubuntu (WSL) Anda, lalu jalankan:
 ```bash
 cd fabric-local
 ./start-fabric.sh
+./deploy-chaincode.sh
 ```
 
 Atau jika Anda hanya me-restart komputer dan data sudah ada, gunakan:
