@@ -42,8 +42,9 @@ export function AuditTrail() {
 
   const filteredLogs = auditLogs.filter(log => {
     const matchesSearch = 
-      log.transaction_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.channel_name.toLowerCase().includes(searchTerm.toLowerCase());
+      log.transaction_type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.channel_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.blockchain_tx_id?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesSync = syncFilter === 'all' || log.validation_status === syncFilter;
 
