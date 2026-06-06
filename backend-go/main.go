@@ -435,9 +435,11 @@ func handleGetDocuments() (interface{}, interface{}) {
 		SELECT 
 			d.document_id, d.shipment_id, d.document_type, d.document_title, 
 			d.document_version, d.issued_at,
-			h.document_hash_value
+			h.document_hash_value,
+			bt.blockchain_tx_id
 		FROM documents d
 		LEFT JOIN document_hashes h ON d.document_id = h.document_id
+		LEFT JOIN blockchain_transactions bt ON d.document_id = bt.entity_id AND bt.transaction_type = 'UploadDocument'
 		ORDER BY d.issued_at DESC
 	`)
 	if err != nil {
@@ -450,18 +452,23 @@ func handleGetDocuments() (interface{}, interface{}) {
 	for rows.Next() {
 		var (
 			dID, sID, dType, dTitle, dVer sql.NullString
-			hVal                          sql.NullString
+			hVal, btTxID                  sql.NullString
 			issuedAt                      time.Time
 		)
-		if err := rows.Scan(&dID, &sID, &dType, &dTitle, &dVer, &issuedAt, &hVal); err == nil {
+		if err := rows.Scan(&dID, &sID, &dType, &dTitle, &dVer, &issuedAt, &hVal, &btTxID); err == nil {
+			btTxIDStr := btTxID.String
+			if btTxIDStr == "" {
+				btTxIDStr = "Pending / Old Record"
+			}
 			docs = append(docs, map[string]interface{}{
 				"document_id":         dID.String,
 				"shipment_id":         sID.String,
 				"document_type":       dType.String,
 				"document_title":      dTitle.String,
 				"document_version":    dVer.String,
-				"issued_date":         issuedAt,
 				"document_hash_value": hVal.String,
+				"blockchain_tx_id":    btTxIDStr,
+				"issued_date":         issuedAt,
 			})
 		}
 	}

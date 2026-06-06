@@ -208,8 +208,16 @@ export function Documents() {
                   <Hash className="w-3 h-3 text-gray-500" />
                   <span className="text-xs text-gray-600">Document Hash (on-chain)</span>
                 </div>
-                <p className="font-mono text-xs text-gray-700 break-all bg-white p-2 border border-gray-200 rounded">
+                <p className="font-mono text-xs text-gray-700 break-all bg-white p-2 border border-gray-200 rounded mb-2">
                   {doc.document_hash_value || 'Pending Validation...'}
+                </p>
+                
+                <div className="flex items-center gap-2 mb-1 mt-3">
+                  <span className="w-3 h-3 rounded-full bg-blue-500 inline-block"></span>
+                  <span className="text-xs text-gray-600">Blockchain TX ID</span>
+                </div>
+                <p className="font-mono text-xs text-gray-700 break-all bg-white p-2 border border-gray-200 rounded">
+                  {doc.blockchain_tx_id || 'Pending / Old Record'}
                 </p>
               </div>
 
