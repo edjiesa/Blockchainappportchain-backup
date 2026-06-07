@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS users (
     organization_id VARCHAR(50) REFERENCES organizations(organization_id),
     full_name       VARCHAR(200) NOT NULL,
     email           VARCHAR(200) UNIQUE NOT NULL,
+    password_hash   VARCHAR(255) NOT NULL,
     role_name       VARCHAR(100),
     is_active       BOOLEAN DEFAULT TRUE,
     created_at      TIMESTAMP DEFAULT NOW()
@@ -206,3 +207,10 @@ INSERT INTO organizations (organization_id, organization_name, organization_type
   ('org-003', 'Banking Corp', 'Banking')
 ON CONFLICT DO NOTHING;
 
+-- Initial Seed Users
+-- The password hash below corresponds to 'admin123' using bcrypt with cost 10
+INSERT INTO users (user_id, organization_id, full_name, email, password_hash, role_name) VALUES
+  ('user-001', 'org-001', 'Port Admin', 'admin@port.co.id', '$2a$10$Wp.E9/p1Ld.K5r13w2fJmOEK90m1rPZ.y37u/XbF3jW61X0p/o9O2', 'PORT_ADMIN'),
+  ('user-002', 'org-002', 'Customs Admin', 'admin@beacukai.co.id', '$2a$10$Wp.E9/p1Ld.K5r13w2fJmOEK90m1rPZ.y37u/XbF3jW61X0p/o9O2', 'CUSTOMS_OFFICER'),
+  ('user-003', 'org-003', 'Bank Admin', 'admin@bank.co.id', '$2a$10$Wp.E9/p1Ld.K5r13w2fJmOEK90m1rPZ.y37u/XbF3jW61X0p/o9O2', 'BANK_ADMIN')
+ON CONFLICT DO NOTHING;
