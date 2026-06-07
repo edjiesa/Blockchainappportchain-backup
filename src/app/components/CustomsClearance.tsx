@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, Shield, CheckCircle, XCircle, Clock, Eye, Plus, X } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -10,6 +11,7 @@ export function CustomsClearance() {
   const [customsClearances, setCustomsClearances] = useState<any[]>([]);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
 
   const fetchData = async () => {
     try {
@@ -52,8 +54,31 @@ export function CustomsClearance() {
     return matchesSearch && matchesStatus;
   });
 
-  // Approve dan Reject actions dihilangkan karena ini UI Port Authority,
-  // proses approval hanya bisa dilakukan oleh Indonesia Customs.
+  const handleApprove = async (clearanceId: string) => {
+    try {
+      await fetch(`${API_URL}/rpc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'UpdateCustomsStatus', params: { customs_clearance_id: clearanceId, status: 'approved' }, id: Date.now() })
+      });
+      await fetchData();
+    } catch (err) {
+      console.error("Failed to approve", err);
+    }
+  };
+
+  const handleReject = async (clearanceId: string) => {
+    try {
+      await fetch(`${API_URL}/rpc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', method: 'UpdateCustomsStatus', params: { customs_clearance_id: clearanceId, status: 'rejected' }, id: Date.now() })
+      });
+      await fetchData();
+    } catch (err) {
+      console.error("Failed to reject", err);
+    }
+  };
 
   const handleSubmitPIB = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,13 +116,15 @@ export function CustomsClearance() {
           <h2 className="text-3xl font-bold text-gray-900">Customs Clearance</h2>
           <p className="text-gray-600 mt-1">Manajemen perizinan bea cukai</p>
         </div>
-        <button 
-          onClick={() => setShowSubmitModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-        >
-          <Plus className="w-5 h-5" />
-          Submit PIB
-        </button>
+        {user?.organization_type === 'Port Authority' && (
+          <button 
+            onClick={() => setShowSubmitModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+          >
+            <Plus className="w-5 h-5" />
+            Submit PIB
+          </button>
+        )}
       </div>
 
       {/* Search and Filter */}
@@ -270,9 +297,25 @@ export function CustomsClearance() {
                 <div className="text-xs text-gray-600">
                   Blockchain TX: <span className="font-mono text-blue-600">{clearance.blockchain_tx_id}</span>
                 </div>
-                {clearance.customs_status === 'pending' && (
+                {clearance.customs_status === 'pending' && user?.organization_type === 'Port Authority' && (
                   <div className="text-sm font-medium text-yellow-600 bg-yellow-50 px-3 py-1 rounded-full border border-yellow-200">
                     Menunggu Keputusan Bea Cukai
+                  </div>
+                )}
+                {clearance.customs_status === 'pending' && user?.organization_type === 'Customs' && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleReject(clearance.customs_clearance_id)}
+                      className="px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      onClick={() => handleApprove(clearance.customs_clearance_id)}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      Approve
+                    </button>
                   </div>
                 )}
               </div>
