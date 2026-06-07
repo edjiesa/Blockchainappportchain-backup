@@ -113,7 +113,7 @@ class FabricConnector {
             };
             
             // Masukkan ke port-channel
-            ccp.channels.port-channel.peers[peer.id] = {
+            ccp.channels["port-channel"].peers[peer.id] = {
                 "endorsingPeer": true,
                 "chaincodeQuery": true,
                 "ledgerQuery": true,
@@ -146,7 +146,7 @@ class FabricConnector {
             };
             
             // Masukkan ke port-channel
-            ccp.channels.port-channel.orderers.push(orderer.id);
+            ccp.channels["port-channel"].orderers.push(orderer.id);
         });
 
         // Log ccp for debugging
