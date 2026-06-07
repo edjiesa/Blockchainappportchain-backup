@@ -52,31 +52,8 @@ export function CustomsClearance() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleApprove = async (clearanceId: string) => {
-    try {
-      await fetch(`${API_URL}/rpc`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jsonrpc: '2.0', method: 'UpdateCustomsStatus', params: { customs_clearance_id: clearanceId, status: 'approved' }, id: Date.now() })
-      });
-      await fetchData();
-    } catch (err) {
-      console.error("Failed to approve", err);
-    }
-  };
-
-  const handleReject = async (clearanceId: string) => {
-    try {
-      await fetch(`${API_URL}/rpc`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jsonrpc: '2.0', method: 'UpdateCustomsStatus', params: { customs_clearance_id: clearanceId, status: 'rejected' }, id: Date.now() })
-      });
-      await fetchData();
-    } catch (err) {
-      console.error("Failed to reject", err);
-    }
-  };
+  // Approve dan Reject actions dihilangkan karena ini UI Port Authority,
+  // proses approval hanya bisa dilakukan oleh Indonesia Customs.
 
   const handleSubmitPIB = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -294,19 +271,8 @@ export function CustomsClearance() {
                   Blockchain TX: <span className="font-mono text-blue-600">{clearance.blockchain_tx_id}</span>
                 </div>
                 {clearance.customs_status === 'pending' && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleReject(clearance.customs_clearance_id)}
-                      className="px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors"
-                    >
-                      Reject
-                    </button>
-                    <button
-                      onClick={() => handleApprove(clearance.customs_clearance_id)}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      Approve
-                    </button>
+                  <div className="text-sm font-medium text-yellow-600 bg-yellow-50 px-3 py-1 rounded-full border border-yellow-200">
+                    Menunggu Keputusan Bea Cukai
                   </div>
                 )}
               </div>
