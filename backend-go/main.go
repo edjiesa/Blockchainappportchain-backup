@@ -987,6 +987,7 @@ func handleGetAllShipments() (interface{}, interface{}) {
 				"shipment_status":    sStatus,
 				"created_at":         createdAt,
 				"total_weight_kg":    25000, // Dummy weight just for UI visualization
+				"containers":         []map[string]interface{}{},
 			})
 		}
 	}
@@ -994,6 +995,39 @@ func handleGetAllShipments() (interface{}, interface{}) {
 	if shipments == nil {
 		shipments = []map[string]interface{}{}
 	}
+
+	// Fetch containers and attach them
+	contRows, err := db.Query(`
+		SELECT container_id, shipment_id, container_number, container_type, size_ft, seal_number, gross_weight, container_status
+		FROM containers
+	`)
+	if err == nil {
+		defer contRows.Close()
+		containersByShipment := make(map[string][]map[string]interface{})
+		for contRows.Next() {
+			var cID, sID, cNum, cType, sFt, sealNum, status string
+			var weight float64
+			if err := contRows.Scan(&cID, &sID, &cNum, &cType, &sFt, &sealNum, &weight, &status); err == nil {
+				containersByShipment[sID] = append(containersByShipment[sID], map[string]interface{}{
+					"container_id":     cID,
+					"container_number": cNum,
+					"container_type":   cType,
+					"size_ft":          sFt,
+					"seal_number":      sealNum,
+					"gross_weight":     weight,
+					"container_status": status,
+				})
+			}
+		}
+
+		for i, s := range shipments {
+			sID := s["shipment_id"].(string)
+			if conts, ok := containersByShipment[sID]; ok {
+				shipments[i]["containers"] = conts
+			}
+		}
+	}
+
 	return shipments, nil
 }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import { Search, Plus, Anchor, ChevronLeft, ChevronRight, Package } from 'lucide-react';
 import { mockContainers } from '../data/portData';
 
@@ -123,6 +123,7 @@ export function Shipments() {
       if (data.result) {
         alert(`Container berhasil dicatat di PostgreSQL dan Blockchain!\nTxID: ${data.result.txId}`);
         setShowContainerDialog(false);
+        fetchShipments(); // Refresh table to show new container
         setContainerData({
           container_number: '',
           size_ft: '20ft',
@@ -255,7 +256,8 @@ export function Shipments() {
                 <tr><td colSpan={7} className="px-6 py-4 text-center">Belum ada data shipment</td></tr>
               ) : (
                 paginatedShipments.map((shipment) => (
-                  <tr key={shipment.shipment_id} className="hover:bg-gray-50 transition-colors">
+                  <Fragment key={shipment.shipment_id}>
+                    <tr className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <Anchor className="w-4 h-4 text-blue-600" />
@@ -304,6 +306,39 @@ export function Shipments() {
                       </div>
                     </td>
                   </tr>
+                  {shipment.containers && shipment.containers.length > 0 && (
+                    <tr className="bg-blue-50/50">
+                      <td colSpan={8} className="px-6 py-3 border-t border-blue-100">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-blue-800">
+                            <Package className="w-4 h-4" />
+                            Daftar Container ({shipment.containers.length})
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {shipment.containers.map((c: any) => (
+                              <div key={c.container_id} className="bg-white border border-blue-200 rounded-lg p-3 text-sm shadow-sm">
+                                <div className="flex justify-between items-start mb-2">
+                                  <span className="font-mono font-bold text-gray-900">{c.container_number}</span>
+                                  <span className="bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded-full font-medium">
+                                    {c.size_ft} {c.container_type}
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-gray-600">
+                                  <span className="text-gray-500">Seal:</span>
+                                  <span className="font-medium text-right text-gray-900">{c.seal_number}</span>
+                                  <span className="text-gray-500">Weight:</span>
+                                  <span className="font-medium text-right text-gray-900">{c.gross_weight} kg</span>
+                                  <span className="text-gray-500">Status:</span>
+                                  <span className="font-medium text-right text-green-600">{c.container_status}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 ))
               )}
             </tbody>
