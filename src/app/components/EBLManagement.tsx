@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Receipt, ArrowRightLeft, Building2, CheckCircle, Clock } from 'lucide-react';
+import { Receipt, ArrowRightLeft, Building2, CheckCircle, Clock, Eye, FileText, Download, Database } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -12,6 +12,8 @@ export function EBLManagement() {
   const [documents, setDocuments] = useState<any[]>([]);
   const [shipments, setShipments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [viewingDoc, setViewingDoc] = useState<any>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
@@ -62,6 +64,45 @@ export function EBLManagement() {
       console.error("Transfer failed", err);
       alert("Gagal melakukan transfer");
     }
+  };
+
+  const handleViewDocument = (doc: any) => {
+    if (!doc) {
+      alert("Dokumen fisik belum diunggah atau tidak ditemukan.");
+      return;
+    }
+    setViewingDoc(doc);
+    if (doc.file_data && doc.file_data.startsWith('data:application/pdf')) {
+      try {
+        const base64Data = doc.file_data.split(',')[1];
+        const byteString = atob(base64Data);
+        const arrayBuffer = new ArrayBuffer(byteString.length);
+        const uint8Array = new Uint8Array(arrayBuffer);
+        for (let i = 0; i < byteString.length; i++) {
+          uint8Array[i] = byteString.charCodeAt(i);
+        }
+        const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+        setPdfUrl(URL.createObjectURL(blob));
+      } catch (e) {
+        console.error("Error creating PDF blob", e);
+        setPdfUrl(doc.file_data); // fallback
+      }
+    } else {
+      setPdfUrl(null);
+    }
+  };
+
+  const handleDownload = (doc: any) => {
+    const content = `PORTCHAIN DOCUMENT RECORD\n========================\n\nTitle: ${doc.document_title}\nType: ${doc.document_type}\nShipment ID: ${doc.shipment_id}\nVersion: ${doc.document_version}\nHash (on-chain): ${doc.document_hash_value}\nIssued At: ${new Date(doc.issued_date || doc.issued_at || new Date()).toLocaleString('id-ID')}\n\n* This is a cryptographically verified document from Portchain *`;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(doc.document_type || 'document').replace(/\s+/g, '_')}_${doc.document_id}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
   };
 
   return (
@@ -205,16 +246,25 @@ export function EBLManagement() {
                   <p>Issued: {new Date(ebl.issued_at).toLocaleDateString('id-ID')}</p>
                   <p className="mt-1">Blockchain TX: <span className="font-mono text-blue-600">{ebl.blockchain_tx_id}</span></p>
                 </div>
-                <button
-                  onClick={() => {
-                    setSelectedEBL(ebl.token_number);
-                    setShowTransferDialog(true);
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  <ArrowRightLeft className="w-4 h-4" />
-                  Transfer e-BL
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleViewDocument(document)}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
+                  >
+                    <Eye className="w-4 h-4" />
+                    Lihat Dokumen
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedEBL(ebl.token_number);
+                      setShowTransferDialog(true);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    <ArrowRightLeft className="w-4 h-4" />
+                    Transfer e-BL
+                  </button>
+                </div>
               </div>
             </div>
           );
@@ -289,6 +339,128 @@ export function EBLManagement() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* PDF Viewer Modal */}
+      {viewingDoc && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-xl max-w-4xl w-full h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="bg-gray-900 text-white px-6 py-4 flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-3">
+                <FileText className="w-6 h-6 text-blue-400" />
+                <h3 className="text-lg font-semibold">{viewingDoc.document_type} - {viewingDoc.document_id}.pdf</h3>
+              </div>
+              <div className="flex items-center gap-4">
+                <button onClick={() => handleDownload(viewingDoc)} className="text-gray-300 hover:text-white transition-colors">
+                  <Download className="w-5 h-5" />
+                </button>
+                <button onClick={() => {
+                  if (pdfUrl && pdfUrl.startsWith('blob:')) URL.revokeObjectURL(pdfUrl);
+                  setPdfUrl(null);
+                  setViewingDoc(null);
+                }} className="text-gray-300 hover:text-white transition-colors">
+                  <span className="text-2xl leading-none">&times;</span>
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex-1 bg-gray-100 overflow-y-auto p-8 flex justify-center">
+              {viewingDoc.file_data && viewingDoc.file_data.startsWith('data:application/pdf') ? (
+                <div className="w-full h-full flex flex-col bg-white shadow-lg">
+                  <iframe src={pdfUrl || viewingDoc.file_data} className="w-full flex-1 border-0" title="PDF Document" />
+                  <div className="p-6 border-t border-gray-300 bg-gray-50">
+                    <h4 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <Database className="w-4 h-4 text-blue-600" />
+                      Cryptographic Verification (Hyperledger Fabric)
+                    </h4>
+                    <div className="space-y-3 bg-blue-50/50 p-4 rounded border border-blue-100">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase font-semibold">Document Hash (SHA-256)</p>
+                        <p className="font-mono text-xs text-blue-900 break-all">{viewingDoc.document_hash_value || "Menunggu proses hashing..."}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase font-semibold">On-Chain Transaction ID</p>
+                        <p className="font-mono text-xs text-green-700 break-all">{viewingDoc.blockchain_tx_id || "Sinkronisasi ke node Fabric..."}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : viewingDoc.file_data && viewingDoc.file_data.startsWith('data:image/') ? (
+                <div className="w-full h-full flex flex-col bg-white shadow-lg items-center">
+                  <img src={viewingDoc.file_data} alt="Document" className="max-w-full max-h-[70vh] object-contain p-4" />
+                  <div className="p-6 border-t border-gray-300 bg-gray-50 w-full mt-auto">
+                    <h4 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                      <Database className="w-4 h-4 text-blue-600" />
+                      Cryptographic Verification (Hyperledger Fabric)
+                    </h4>
+                    <div className="space-y-3 bg-blue-50/50 p-4 rounded border border-blue-100">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase font-semibold">Document Hash (SHA-256)</p>
+                        <p className="font-mono text-xs text-blue-900 break-all">{viewingDoc.document_hash_value || "Menunggu proses hashing..."}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase font-semibold">On-Chain Transaction ID</p>
+                        <p className="font-mono text-xs text-green-700 break-all">{viewingDoc.blockchain_tx_id || "Sinkronisasi ke node Fabric..."}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+              <div className="bg-white w-[210mm] min-h-[297mm] shadow-lg p-12 relative flex flex-col">
+                <div className="absolute top-12 right-12 w-32 h-32 border-4 border-blue-100 rounded-full flex items-center justify-center opacity-80 rotate-12">
+                  <div className="text-center text-blue-800 font-bold text-sm tracking-widest uppercase">
+                    Secured by<br/>Blockchain<br/>Network
+                  </div>
+                </div>
+                <div className="border-b-2 border-gray-800 pb-6 mb-8">
+                  <h1 className="text-4xl font-serif font-bold text-gray-900 tracking-tight uppercase">{viewingDoc.document_type}</h1>
+                  <p className="text-gray-500 mt-2 font-mono text-sm tracking-widest">{viewingDoc.document_id}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-x-12 gap-y-8 flex-1">
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Title/Description</h4>
+                    <p className="text-lg font-medium text-gray-900">{viewingDoc.document_title}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Date Issued</h4>
+                    <p className="text-lg font-medium text-gray-900">{new Date(viewingDoc.issued_date || viewingDoc.issued_at || new Date()).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Category</h4>
+                    <p className="text-lg font-medium text-gray-900">{viewingDoc.document_category || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Document Status</h4>
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800 border border-green-200">
+                      {viewingDoc.document_status || 'Active'}
+                    </span>
+                  </div>
+                  <div className="col-span-2">
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Shipment Reference</h4>
+                    <p className="text-lg font-medium text-gray-900 font-mono bg-gray-50 p-3 rounded border border-gray-200">{viewingDoc.shipment_id}</p>
+                  </div>
+                </div>
+                <div className="mt-auto pt-8 border-t border-gray-300">
+                  <h4 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <Database className="w-4 h-4 text-blue-600" />
+                    Cryptographic Verification (Hyperledger Fabric)
+                  </h4>
+                  <div className="space-y-3 bg-blue-50/50 p-4 rounded border border-blue-100">
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase font-semibold">Document Hash (SHA-256)</p>
+                      <p className="font-mono text-xs text-blue-900 break-all">{viewingDoc.document_hash_value || "Menunggu proses hashing..."}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase font-semibold">On-Chain Transaction ID</p>
+                      <p className="font-mono text-xs text-green-700 break-all">{viewingDoc.blockchain_tx_id || "Sinkronisasi ke node Fabric..."}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              )}
+            </div>
           </div>
         </div>
       )}
