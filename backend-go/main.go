@@ -1065,7 +1065,7 @@ func handleExplorerTransactions(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.Query(`
 		SELECT b.blockchain_tx_id, b.tx_id, b.channel_name, b.chaincode_name, b.transaction_type, b.validation_status, b.created_at,
 		       o1.organization_name as from_org_name, o2.organization_name as to_org_name,
-		       COALESCE(s_org.organization_name, u_org.organization_name, ebl_org.organization_name, sc_org.organization_name) as exec_org,
+		       COALESCE(s_org.organization_name, u_org.organization_name, d_s_org.organization_name, ebl_org.organization_name, sc_org.organization_name) as exec_org,
 		       u.full_name as doc_user
 		FROM blockchain_transactions b
 		LEFT JOIN ebl_transfers t ON b.blockchain_tx_id = t.blockchain_tx_id
@@ -1076,8 +1076,10 @@ func handleExplorerTransactions(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN documents d ON b.transaction_type = 'UploadDocument' AND b.entity_id = d.document_id
 		LEFT JOIN users u ON d.uploaded_by = u.user_id
 		LEFT JOIN organizations u_org ON u.organization_id = u_org.organization_id
-		LEFT JOIN ebl_tokens ebl ON b.transaction_type = 'IssueEBLToken' AND b.entity_id = ebl.token_id
-		LEFT JOIN organizations ebl_org ON ebl.owner_org_id = ebl_org.organization_id
+		LEFT JOIN shipments d_s ON d.shipment_id = d_s.shipment_id
+		LEFT JOIN organizations d_s_org ON d_s.organization_id = d_s_org.organization_id
+		LEFT JOIN ebl_tokens ebl ON b.transaction_type = 'IssueEBLToken' AND b.entity_id = ebl.ebl_token_id
+		LEFT JOIN organizations ebl_org ON ebl.current_owner_org_id = ebl_org.organization_id
 		LEFT JOIN containers c ON b.transaction_type = 'CreateContainer' AND b.entity_id = c.container_id
 		LEFT JOIN shipments sc ON c.shipment_id = sc.shipment_id
 		LEFT JOIN organizations sc_org ON sc.organization_id = sc_org.organization_id
