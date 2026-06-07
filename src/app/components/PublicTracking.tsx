@@ -221,9 +221,12 @@ export function PublicTracking() {
       </main>
 
       <footer className="py-8 mt-auto z-10 border-t border-white/10 bg-black/20 backdrop-blur-lg">
-        <p className="text-center text-white/60 text-sm font-medium">
-          &copy; {new Date().getFullYear()} PortChain Global Logistics. Secured by Hyperledger Fabric.
-        </p>
+        <div className="text-center text-white/60 text-sm font-medium">
+          <p>PortChain &copy; 2026 - Port Licensing & Permit Management</p>
+          <p className="mt-1 text-xs opacity-80">
+            Powered by Hyperledger Fabric &bull; Built for Port Authority
+          </p>
+        </div>
       </footer>
     </div>
   );

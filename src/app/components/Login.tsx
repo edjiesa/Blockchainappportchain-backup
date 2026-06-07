@@ -171,6 +171,14 @@ export function Login() {
           </div>
         </div>
       </div>
+      <div className="relative mt-auto pt-8 pb-4 z-10 w-full text-center text-white/70">
+        <p className="text-sm font-medium">
+          PortChain &copy; 2026 - Port Licensing & Permit Management
+        </p>
+        <p className="mt-1 text-xs opacity-80">
+          Powered by Hyperledger Fabric &bull; Built for Port Authority
+        </p>
+      </div>
     </div>
   );
 }
