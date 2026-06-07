@@ -309,7 +309,7 @@ export function Documents() {
                   required
                 >
                   <option value="">Pilih Shipment</option>
-                  {shipments.slice(0, 10).map(ship => (
+                  {shipments.filter(ship => !documents.some(doc => doc.shipment_id === ship.shipment_id)).slice(0, 10).map(ship => (
                     <option key={ship.shipment_id} value={ship.shipment_id}>
                       {ship.shipment_code} - {ship.vessel_name}
                     </option>
