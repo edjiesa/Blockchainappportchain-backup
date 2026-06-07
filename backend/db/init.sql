@@ -108,6 +108,7 @@ CREATE TABLE IF NOT EXISTS document_files (
     storage_path         VARCHAR(500),
     encryption_algorithm VARCHAR(100),
     is_encrypted         BOOLEAN DEFAULT FALSE,
+    file_data            TEXT,
     created_at           TIMESTAMP DEFAULT NOW()
 );
 
