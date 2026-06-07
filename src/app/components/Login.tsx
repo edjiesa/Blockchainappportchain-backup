@@ -45,7 +45,7 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center pt-12 sm:px-6 lg:px-8 bg-[url('https://images.unsplash.com/photo-1494412574643-05f45f516d27?q=80&w=2940&auto=format&fit=crop')] bg-cover bg-center">
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-[url('https://images.unsplash.com/photo-1494412574643-05f45f516d27?q=80&w=2940&auto=format&fit=crop')] bg-cover bg-center relative">
       <div className="absolute inset-0 bg-blue-900/80 backdrop-blur-sm"></div>
       
       <div className="relative sm:mx-auto sm:w-full sm:max-w-md z-10">
@@ -171,7 +171,7 @@ export function Login() {
           </div>
         </div>
       </div>
-      <footer className="w-full mt-auto py-6 z-10 border-t border-white/10 bg-black/30 backdrop-blur-md shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
+      <footer className="absolute bottom-0 left-0 w-full py-6 z-10 border-t border-white/10 bg-black/30 backdrop-blur-md shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
         <div className="text-center text-white">
           <p className="text-sm font-semibold tracking-wide drop-shadow-md">
             PortChain &copy; 2026 - Port Licensing & Permit Management
