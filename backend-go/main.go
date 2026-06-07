@@ -203,7 +203,7 @@ func handleSmartContractForwarding(method string, params json.RawMessage) (inter
 
 	connectorURL := os.Getenv("FABRIC_CONNECTOR_URL")
 	if connectorURL == "" {
-		connectorURL = "http://fabric-connector:3002"
+		connectorURL = "http://127.0.0.1:3002"
 	}
 
 	url := connectorURL + "/api/invoke"
