@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS blockchain_transactions (
     chaincode_name    VARCHAR(100),
     transaction_type  VARCHAR(100),
     validation_status VARCHAR(50),
+    entity_id         VARCHAR(50),
     block_number      INTEGER,
     committed_at      TIMESTAMP,
     created_at        TIMESTAMP DEFAULT NOW()
@@ -210,7 +211,7 @@ ON CONFLICT DO NOTHING;
 -- Initial Seed Users
 -- The password hash below corresponds to 'admin123' using bcrypt with cost 10
 INSERT INTO users (user_id, organization_id, full_name, email, password_hash, role_name) VALUES
-  ('user-001', 'org-001', 'Port Admin', 'admin@port.co.id', '$2a$10$Wp.E9/p1Ld.K5r13w2fJmOEK90m1rPZ.y37u/XbF3jW61X0p/o9O2', 'PORT_ADMIN'),
-  ('user-002', 'org-002', 'Customs Admin', 'admin@beacukai.co.id', '$2a$10$Wp.E9/p1Ld.K5r13w2fJmOEK90m1rPZ.y37u/XbF3jW61X0p/o9O2', 'CUSTOMS_OFFICER'),
-  ('user-003', 'org-003', 'Bank Admin', 'admin@bank.co.id', '$2a$10$Wp.E9/p1Ld.K5r13w2fJmOEK90m1rPZ.y37u/XbF3jW61X0p/o9O2', 'BANK_ADMIN')
+  ('user-001', 'org-001', 'Port Admin', 'admin@port.co.id', '$2b$10$eX8A8GvKcIlyuDch28pjF.LVX17rCIWyUM6GbCjEgYyp4Mg.7WoPG', 'PORT_ADMIN'),
+  ('user-002', 'org-002', 'Customs Admin', 'admin@beacukai.co.id', '$2b$10$eX8A8GvKcIlyuDch28pjF.LVX17rCIWyUM6GbCjEgYyp4Mg.7WoPG', 'CUSTOMS_OFFICER'),
+  ('user-003', 'org-003', 'Bank Admin', 'admin@bank.co.id', '$2b$10$eX8A8GvKcIlyuDch28pjF.LVX17rCIWyUM6GbCjEgYyp4Mg.7WoPG', 'BANK_ADMIN')
 ON CONFLICT DO NOTHING;
