@@ -25,7 +25,9 @@ export function AuditTrail() {
           channel_name: log.channel_name,
           chaincode_name: log.chaincode_name,
           validation_status: log.validation_status === 'VALID' ? 'synced' : 'pending',
-          created_at: log.created_at
+          created_at: log.created_at,
+          executor: log.executor,
+          block_number: log.block_number
         }));
         setAuditLogs(formatted);
       }
@@ -169,9 +171,9 @@ export function AuditTrail() {
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">
-                          {'SYS'}
+                      <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-center px-1">
+                        <span className="text-white text-xs font-bold leading-tight">
+                          {log.executor ? log.executor.substring(0, 3).toUpperCase() : 'SYS'}
                         </span>
                       </div>
                       <div>
@@ -179,7 +181,7 @@ export function AuditTrail() {
                         <div className="flex items-center gap-2 mt-1">
                           <User className="w-3 h-3 text-gray-500" />
                           <span className="text-xs text-gray-600">
-                            System
+                            {log.executor || 'System'}
                           </span>
                         </div>
                       </div>
@@ -215,13 +217,20 @@ export function AuditTrail() {
                     </div>
                   </div>
 
-                  <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
+                  <div className="mt-3 pt-3 border-t border-gray-200 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <Database className="w-4 h-4 text-blue-600" />
-                      <span className="text-xs text-gray-600">
+                      <Database className="w-4 h-4 text-blue-600 shrink-0" />
+                      <span className="text-xs text-gray-600 break-all">
                         Blockchain TX: <span className="font-mono text-blue-600">{log.blockchain_tx_id}</span>
                       </span>
                     </div>
+                    {log.block_number && (
+                      <div className="flex items-center shrink-0">
+                        <span className="text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-md shadow-sm">
+                          Block #{log.block_number}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
