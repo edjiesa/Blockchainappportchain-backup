@@ -787,9 +787,14 @@ func handleTransferEBLToken(params json.RawMessage) (interface{}, interface{}) {
 	}
 
 	// 3. Update EBL Token Owner
+	tokenStatus := "ACTIVE"
+	if input.ToOrgID == "org-001" && fromOrgID != "org-001" {
+		tokenStatus = "COMPLETED"
+	}
+
 	_, err = db.Exec(`
-		UPDATE ebl_tokens SET current_owner_org_id = $1 WHERE ebl_token_id = $2
-	`, input.ToOrgID, eblID)
+		UPDATE ebl_tokens SET current_owner_org_id = $1, token_status = $2 WHERE ebl_token_id = $3
+	`, input.ToOrgID, tokenStatus, eblID)
 	if err != nil {
 		log.Printf("DB Update EBL Error: %v", err)
 		return nil, map[string]string{"code": "-32001", "message": "Failed to update EBL ownership"}
