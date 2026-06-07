@@ -157,6 +157,17 @@ export function Login() {
                 </span>
               </div>
             </div>
+            
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600 mb-3">Are you an Exporter or Importer?</p>
+              <button
+                type="button"
+                onClick={() => navigate('/track')}
+                className="w-full flex justify-center py-3 px-4 border border-blue-200 rounded-lg shadow-sm text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              >
+                Track Shipment / e-BL
+              </button>
+            </div>
           </div>
         </div>
       </div>

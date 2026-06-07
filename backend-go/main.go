@@ -151,6 +151,8 @@ func rpcHandler(w http.ResponseWriter, r *http.Request) {
 		result, errObj = handleUpdateCustomsStatus(req.Params)
 	case "CreateContainer":
 		result, errObj = handleCreateContainer(req.Params)
+	case "TrackShipment":
+		result, errObj = handleTrackShipment(req.Params)
 	case "GetShipment":
 		// Get from Fabric
 		result, errObj = handleSmartContractForwarding(req.Method, req.Params)
@@ -801,6 +803,154 @@ func handleTransferEBLToken(params json.RawMessage) (interface{}, interface{}) {
 	}
 
 	return map[string]interface{}{"success": true, "message": "EBL transferred successfully"}, nil
+}
+
+func handleTrackShipment(params json.RawMessage) (interface{}, interface{}) {
+	var input struct {
+		TrackingNumber string `json:"tracking_number"`
+	}
+	if err := json.Unmarshal(params, &input); err != nil {
+		return nil, map[string]string{"code": "-32602", "message": "Invalid params"}
+	}
+
+	trackingStr := strings.TrimSpace(input.TrackingNumber)
+	if trackingStr == "" {
+		return nil, map[string]string{"code": "-32602", "message": "Tracking number is required"}
+	}
+
+	var shipmentID, shipmentCode string
+	
+	err := db.QueryRow(`
+		SELECT s.shipment_id, s.shipment_code
+		FROM ebl_tokens e
+		JOIN documents d ON e.document_id = d.document_id
+		JOIN shipments s ON d.shipment_id = s.shipment_id
+		WHERE e.token_number = $1 OR e.ebl_token_id = $1
+	`, trackingStr).Scan(&shipmentID, &shipmentCode)
+	
+	if err != nil {
+		err = db.QueryRow(`
+			SELECT shipment_id, shipment_code
+			FROM shipments
+			WHERE shipment_code = $1 OR shipment_id = $1
+		`, trackingStr).Scan(&shipmentID, &shipmentCode)
+	}
+
+	if err != nil {
+		return nil, map[string]string{"code": "-32004", "message": "Tracking number not found"}
+	}
+
+	type TimelineEvent struct {
+		Date        time.Time `json:"date"`
+		Title       string    `json:"title"`
+		Description string    `json:"description"`
+		Status      string    `json:"status"`
+		Icon        string    `json:"icon"`
+	}
+	var timeline []TimelineEvent
+
+	var createdTime time.Time
+	var origin, destination string
+	err = db.QueryRow("SELECT created_at, origin_port, destination_port FROM shipments WHERE shipment_id = $1", shipmentID).Scan(&createdTime, &origin, &destination)
+	if err == nil {
+		timeline = append(timeline, TimelineEvent{
+			Date:        createdTime,
+			Title:       "Shipment Created",
+			Description: "Shipment registered in PortChain from " + origin + " to " + destination,
+			Status:      "completed",
+			Icon:        "Anchor",
+		})
+	}
+
+	var docID string
+	var uploadedAt time.Time
+	var docType string
+	err = db.QueryRow("SELECT document_id, uploaded_at, document_type FROM documents WHERE shipment_id = $1 ORDER BY uploaded_at ASC LIMIT 1", shipmentID).Scan(&docID, &uploadedAt, &docType)
+	if err == nil {
+		timeline = append(timeline, TimelineEvent{
+			Date:        uploadedAt,
+			Title:       "Document Uploaded",
+			Description: docType + " document uploaded",
+			Status:      "completed",
+			Icon:        "FileText",
+		})
+
+		var clearanceStatus string
+		var clearanceDate time.Time
+		err = db.QueryRow("SELECT clearance_status, clearance_date FROM customs_clearance WHERE document_id = $1", docID).Scan(&clearanceStatus, &clearanceDate)
+		if err == nil {
+			status := "pending"
+			if clearanceStatus == "APPROVED" {
+				status = "completed"
+			} else if clearanceStatus == "REJECTED" {
+				status = "failed"
+			}
+			timeline = append(timeline, TimelineEvent{
+				Date:        clearanceDate,
+				Title:       "Customs Clearance",
+				Description: "Customs review: " + clearanceStatus,
+				Status:      status,
+				Icon:        "Shield",
+			})
+		}
+
+		var eblID, eblNum, tokenStatus string
+		var issuedAt time.Time
+		err = db.QueryRow("SELECT ebl_token_id, token_number, issued_at, token_status FROM ebl_tokens WHERE document_id = $1", docID).Scan(&eblID, &eblNum, &issuedAt, &tokenStatus)
+		if err == nil {
+			timeline = append(timeline, TimelineEvent{
+				Date:        issuedAt,
+				Title:       "e-BL Issued",
+				Description: "Token " + eblNum + " generated",
+				Status:      "completed",
+				Icon:        "Receipt",
+			})
+
+			rows, _ := db.Query(`
+				SELECT t.transferred_at, o.organization_name, t.transfer_reason
+				FROM ebl_transfers t
+				JOIN organizations o ON t.to_org_id = o.organization_id
+				WHERE t.ebl_token_id = $1
+				ORDER BY t.transferred_at ASC
+			`, eblID)
+			if rows != nil {
+				defer rows.Close()
+				for rows.Next() {
+					var trfAt time.Time
+					var orgName, reason string
+					rows.Scan(&trfAt, &orgName, &reason)
+					timeline = append(timeline, TimelineEvent{
+						Date:        trfAt,
+						Title:       "e-BL Transferred",
+						Description: "Transferred to " + orgName + " (" + reason + ")",
+						Status:      "completed",
+						Icon:        "ArrowRightLeft",
+					})
+				}
+			}
+
+			if tokenStatus == "COMPLETED" {
+				var lastDate time.Time
+				db.QueryRow("SELECT transferred_at FROM ebl_transfers WHERE ebl_token_id = $1 ORDER BY transferred_at DESC LIMIT 1", eblID).Scan(&lastDate)
+				if lastDate.IsZero() {
+					lastDate = time.Now()
+				}
+				timeline = append(timeline, TimelineEvent{
+					Date:        lastDate,
+					Title:       "Shipment Completed",
+					Description: "e-BL returned to Port Authority. Transaction finished.",
+					Status:      "completed",
+					Icon:        "CheckCircle",
+				})
+			}
+		}
+	}
+
+	return map[string]interface{}{
+		"success":       true,
+		"shipment_code": shipmentCode,
+		"timeline":      timeline,
+	}, nil
 }
 
 func handleCreateCustomsClearance(params json.RawMessage) (interface{}, interface{}) {

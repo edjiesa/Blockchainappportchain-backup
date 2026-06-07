@@ -11,6 +11,7 @@ import { AuditTrail } from "./components/AuditTrail";
 import { HardwareWallet } from "./components/HardwareWallet";
 import { ScannerTools } from "./components/ScannerTools";
 import { Login } from "./components/Login";
+import { PublicTracking } from "./components/PublicTracking";
 import { useAuth } from "./context/AuthContext";
 
 function ProtectedRoute() {
@@ -25,6 +26,10 @@ export const router = createBrowserRouter([
   {
     path: "/login",
     element: <Login />,
+  },
+  {
+    path: "/track",
+    element: <PublicTracking />,
   },
   {
     path: "/",
