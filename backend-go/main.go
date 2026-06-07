@@ -925,9 +925,9 @@ func handleCreateShipment(params json.RawMessage) (interface{}, interface{}) {
 
 	// Also log to blockchain_transactions table for UI history
 	_, err := db.Exec(`
-		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status, entity_id)
-		VALUES ($1, $2, 'port-channel', 'portchain-cc', 'CreateShipment', 'VALID', $3)
-	`, txID, uuid.New().String(), shipmentID)
+		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
+		VALUES ($1, $2, 'port-channel', 'portchain-cc', 'CreateShipment', 'VALID')
+	`, txID, uuid.New().String())
 	
 	if err != nil {
 		log.Printf("Blockchain Tx Log Error: %v", err)
