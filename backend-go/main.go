@@ -201,9 +201,14 @@ func handleSmartContractForwarding(method string, params json.RawMessage) (inter
 		isQuery = true
 	}
 
-	url := "http://127.0.0.1:3002/api/invoke"
+	connectorURL := os.Getenv("FABRIC_CONNECTOR_URL")
+	if connectorURL == "" {
+		connectorURL = "http://fabric-connector:3002"
+	}
+
+	url := connectorURL + "/api/invoke"
 	if isQuery {
-		url = "http://127.0.0.1:3002/api/query"
+		url = connectorURL + "/api/query"
 	}
 
 	var argsArray []interface{}
