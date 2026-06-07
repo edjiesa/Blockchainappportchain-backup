@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type RPCRequest struct {
@@ -351,7 +352,8 @@ func handleLoginUser(params json.RawMessage) (interface{}, interface{}) {
 		return nil, map[string]string{"code": "-32004", "message": "Invalid email or password"}
 	}
 
-	if dbPassword != input.Password {
+	if err := bcrypt.CompareHashAndPassword([]byte(dbPassword), []byte(input.Password)); err != nil {
+		log.Printf("Login error: password mismatch for %s", input.Email)
 		return nil, map[string]string{"code": "-32004", "message": "Invalid email or password"}
 	}
 
