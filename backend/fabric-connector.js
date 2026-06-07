@@ -63,9 +63,9 @@ class FabricConnector {
             console.log("Koneksi Gateway Berhasil!");
             
             // 5. Sambung ke Channel dan Chaincode Server
-            // Catatan: Microfab secara default menggunakan channel 'mychannel'
-            this.network = await this.gateway.getNetwork('mychannel');
-            console.log("Berhasil tergabung dengan channel: mychannel");
+            // Catatan: Microfab secara default menggunakan channel 'port-channel'
+            this.network = await this.gateway.getNetwork('port-channel');
+            console.log("Berhasil tergabung dengan channel: port-channel");
 
         } catch (error) {
             console.error("Gagal melakukan inisialisasi koneksi Fabric:", error);
@@ -92,7 +92,7 @@ class FabricConnector {
             "orderers": {},
             "certificateAuthorities": {},
             "channels": {
-                "mychannel": {
+                "port-channel": {
                     "orderers": [],
                     "peers": {}
                 }
@@ -112,8 +112,8 @@ class FabricConnector {
                 "grpcOptions": peer.api_options
             };
             
-            // Masukkan ke mychannel
-            ccp.channels.mychannel.peers[peer.id] = {
+            // Masukkan ke port-channel
+            ccp.channels.port-channel.peers[peer.id] = {
                 "endorsingPeer": true,
                 "chaincodeQuery": true,
                 "ledgerQuery": true,
@@ -145,8 +145,8 @@ class FabricConnector {
                 "grpcOptions": orderer.api_options
             };
             
-            // Masukkan ke mychannel
-            ccp.channels.mychannel.orderers.push(orderer.id);
+            // Masukkan ke port-channel
+            ccp.channels.port-channel.orderers.push(orderer.id);
         });
 
         // Log ccp for debugging
@@ -162,12 +162,12 @@ class FabricConnector {
     async getBlockchainInfo() {
         if (!this.network) throw new Error("Gateway belum siap");
         const contract = this.network.getContract('qscc');
-        const infoBytes = await contract.evaluateTransaction('GetChainInfo', 'mychannel');
+        const infoBytes = await contract.evaluateTransaction('GetChainInfo', 'port-channel');
         
         // decodeChaincodeQueryResponse is needed for protobuf
         // But for common.BlockchainInfo, we can use fabric-common's protobuf decode if needed.
         // Let's use a standard block extraction instead to get the height
-        const blockBytes = await contract.evaluateTransaction('GetBlockByNumber', 'mychannel', '0');
+        const blockBytes = await contract.evaluateTransaction('GetBlockByNumber', 'port-channel', '0');
         const block = BlockDecoder.decode(blockBytes);
         // Getting height from infoBytes is complex without protobuf, so we'll do a simpler workaround for height if needed, 
         // OR we can just use the audit_logs to count transactions.
@@ -181,7 +181,7 @@ class FabricConnector {
         const contract = this.network.getContract('qscc');
         
         // Dapatkan info blockchain
-        const infoBytes = await contract.evaluateTransaction('GetChainInfo', 'mychannel');
+        const infoBytes = await contract.evaluateTransaction('GetChainInfo', 'port-channel');
         
         // Fabric common.BlockchainInfo format:
         // uint64 height = 1;
@@ -214,7 +214,7 @@ class FabricConnector {
         // Ambil block satu per satu mundur
         for (let i = startBlock; i >= endBlock; i--) {
             try {
-                const blockBytes = await contract.evaluateTransaction('GetBlockByNumber', 'mychannel', String(i));
+                const blockBytes = await contract.evaluateTransaction('GetBlockByNumber', 'port-channel', String(i));
                 const block = BlockDecoder.decode(blockBytes);
                 
                 // Parse transaksi dalam block

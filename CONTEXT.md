@@ -118,7 +118,7 @@ docker compose up -d --build backend
 | Authentication (RBAC) | ✅ | Login bekerja, menu di-filter per role |
 | Backend Golang API | ✅ | Handle Login & Forward ke Fabric Connector |
 | Fabric Node.js Connector | ✅ | Menjembatani Go ke Blockchain Microfab |
-| Chaincode Deployed | ✅ | Smart Contract aktif di `mychannel` |
+| Chaincode Deployed | ✅ | Smart Contract aktif di `port-channel` |
 | UI/UX Redesign | ✅ | Sidebar premium layout selesai |
 | Real data integration | ✅ | Terhubung dari UI -> Go -> Node.js -> Fabric |
 

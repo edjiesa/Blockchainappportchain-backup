@@ -248,7 +248,7 @@ Password: portchain123
 ## ⛓️ Blockchain (Hyperledger Fabric Multi-Org)
 
 - **Platform:** IBM Microfab (Dikonfigurasi kustom untuk simulasi Multi-Org)
-- **Channel:** `mychannel`
+- **Channel:** `port-channel`
 - **Organisasi (3 Org):** `portorg` (Port Authority), `customsorg` (Customs), `bankorg` (Banking)
 - **Chaincode:** `portchain-cc` (Monolithic Smart Contract)
 - **Consensus:** Raft

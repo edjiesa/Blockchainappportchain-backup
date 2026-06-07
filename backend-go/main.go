@@ -309,7 +309,7 @@ func handleRegisterUser(params json.RawMessage) (interface{}, interface{}) {
 	// Simulate Blockchain TX for Fabric CA Registration
 	db.Exec(`
 		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status)
-		VALUES ($1, $2, 'mychannel', 'fabric-ca', 'RegisterUser', 'VALID')
+		VALUES ($1, $2, 'port-channel', 'fabric-ca', 'RegisterUser', 'VALID')
 	`, txID, uuid.New().String())
 
 	return map[string]interface{}{
@@ -563,7 +563,7 @@ func handleUploadDocument(params json.RawMessage) (interface{}, interface{}) {
 	// 1. Log to Blockchain Transactions
 	_, err := db.Exec(`
 		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status, entity_id)
-		VALUES ($1, $2, 'mychannel', 'portchain-cc', 'UploadDocument', 'VALID', $3)
+		VALUES ($1, $2, 'port-channel', 'portchain-cc', 'UploadDocument', 'VALID', $3)
 	`, txID, uuid.New().String(), docID)
 	if err != nil {
 		log.Printf("Blockchain TX Insert Error: %v", err)
@@ -617,7 +617,7 @@ func handleUploadDocument(params json.RawMessage) (interface{}, interface{}) {
 		} else {
 			db.Exec(`
 				INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status, entity_id)
-				VALUES ($1, $2, 'mychannel', 'ebl-cc', 'IssueEBLToken', 'VALID', $3)
+				VALUES ($1, $2, 'port-channel', 'ebl-cc', 'IssueEBLToken', 'VALID', $3)
 			`, eblTxID, uuid.New().String(), eblID)
 
 			db.Exec(`
@@ -722,7 +722,7 @@ func handleTransferEBLToken(params json.RawMessage) (interface{}, interface{}) {
 	// 1. Log to Blockchain Transactions
 	_, err = db.Exec(`
 		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status, entity_id)
-		VALUES ($1, $2, 'mychannel', 'ebl-cc', 'TransferEBLToken', 'VALID', $3)
+		VALUES ($1, $2, 'port-channel', 'ebl-cc', 'TransferEBLToken', 'VALID', $3)
 	`, txID, uuid.New().String(), eblID)
 	if err != nil {
 		log.Printf("Blockchain TX Insert Error: %v", err)
@@ -775,7 +775,7 @@ func handleCreateCustomsClearance(params json.RawMessage) (interface{}, interfac
 	// Insert into blockchain_transactions first to satisfy foreign key constraint
 	_, err := db.Exec(`
 		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status, entity_id)
-		VALUES ($1, $2, 'mychannel', 'customs-cc', 'CreateCustomsClearance', 'VALID', $3)
+		VALUES ($1, $2, 'port-channel', 'customs-cc', 'CreateCustomsClearance', 'VALID', $3)
 	`, txID, uuid.New().String(), cID)
 	if err != nil {
 		log.Printf("Blockchain TX Insert Error: %v", err)
@@ -817,7 +817,7 @@ func handleUpdateCustomsStatus(params json.RawMessage) (interface{}, interface{}
 	// Insert into blockchain_transactions first to satisfy foreign key constraint
 	_, err := db.Exec(`
 		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status, entity_id)
-		VALUES ($1, $2, 'mychannel', 'customs-cc', 'UpdateCustomsStatus', 'VALID', $3)
+		VALUES ($1, $2, 'port-channel', 'customs-cc', 'UpdateCustomsStatus', 'VALID', $3)
 	`, newTxID, uuid.New().String(), input.CustomsClearanceID)
 	if err != nil {
 		log.Printf("Blockchain TX Insert Error: %v", err)
@@ -876,7 +876,7 @@ func handleCreateContainer(params json.RawMessage) (interface{}, interface{}) {
 
 	db.Exec(`
 		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status, entity_id)
-		VALUES ($1, $2, 'mychannel', 'portchain-cc', 'CreateContainer', 'VALID', $3)
+		VALUES ($1, $2, 'port-channel', 'portchain-cc', 'CreateContainer', 'VALID', $3)
 	`, txID, uuid.New().String(), containerID)
 
 	return map[string]interface{}{"success": true, "message": "Container created successfully", "container_id": containerID, "txId": txID}, nil
@@ -919,7 +919,7 @@ func handleCreateShipment(params json.RawMessage) (interface{}, interface{}) {
 	// Also log to blockchain_transactions table for UI history
 	_, err := db.Exec(`
 		INSERT INTO blockchain_transactions (blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status, entity_id)
-		VALUES ($1, $2, 'mychannel', 'portchain-cc', 'CreateShipment', 'VALID', $3)
+		VALUES ($1, $2, 'port-channel', 'portchain-cc', 'CreateShipment', 'VALID', $3)
 	`, txID, uuid.New().String(), shipmentID)
 	
 	if err != nil {

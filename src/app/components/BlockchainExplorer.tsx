@@ -233,7 +233,7 @@ export function BlockchainExplorer() {
                         <p className="text-xs text-blue-600 mt-1 font-semibold">{tx.transfer_flow}</p>
                       )}
                     </td>
-                    <td className="px-6 py-4 font-mono text-sm text-gray-600">{tx.channel_name || 'mychannel'}</td>
+                    <td className="px-6 py-4 font-mono text-sm text-gray-600">{tx.channel_name || 'port-channel'}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         {tx.validation_status === 'VALID' ? (

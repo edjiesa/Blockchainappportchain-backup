@@ -9,7 +9,7 @@ services:
       - "3001:3001"
       - "8001:8001"
     environment:
-      - MICROFAB_CONFIG={"endorsing_organizations":[{"name":"portorg"},{"name":"customsorg"},{"name":"bankorg"}],"channels":[{"name":"mychannel","endorsing_organizations":["portorg","customsorg","bankorg"]}],"chaincodes":[{"name":"portchain-cc","version":"1.0.1","format":"node","channel":"mychannel","directory":"/chaincode"}],"capability_level":"V2_0"}
+      - MICROFAB_CONFIG={"endorsing_organizations":[{"name":"portorg"},{"name":"customsorg"},{"name":"bankorg"}],"channels":[{"name":"port-channel","endorsing_organizations":["portorg","customsorg","bankorg"]}],"chaincodes":[{"name":"portchain-cc","version":"1.0.1","format":"node","channel":"port-channel","directory":"/chaincode"}],"capability_level":"V2_0"}
     volumes:
       - ../chaincode/portchain-cc:/chaincode
       - microfab_data:/opt/microfab/data
