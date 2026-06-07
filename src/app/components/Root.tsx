@@ -35,7 +35,7 @@ export function Root() {
     { name: 'e-BL', path: '/ebl', icon: Receipt, roles: ['Port Authority', 'Banking'] },
     { name: 'Organizations', path: '/organizations', icon: Building2, roles: ['Port Authority'] },
     { name: 'Blockchain', path: '/blockchain', icon: Database, roles: ['Port Authority', 'Customs', 'Banking'] },
-    { name: 'Audit Trail', path: '/audit', icon: FileCheck, roles: ['Port Authority', 'Customs'] },
+    { name: 'Audit Trail', path: '/audit', icon: FileCheck, roles: ['Port Authority'] },
   ];
 
   // Filter navigation based on user's organization type
