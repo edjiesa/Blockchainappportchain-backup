@@ -1063,27 +1063,32 @@ func handleExplorerTransactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	rows, err := db.Query(`
-		SELECT b.blockchain_tx_id, b.tx_id, b.channel_name, b.chaincode_name, b.transaction_type, b.validation_status, b.created_at,
+		WITH RankedTxs AS (
+			SELECT b.blockchain_tx_id, b.tx_id, b.channel_name, b.chaincode_name, b.transaction_type, b.validation_status, b.created_at, b.entity_id,
+			       ROW_NUMBER() OVER (ORDER BY b.created_at ASC) as block_number
+			FROM blockchain_transactions b
+		)
+		SELECT r.blockchain_tx_id, r.tx_id, r.channel_name, r.chaincode_name, r.transaction_type, r.validation_status, r.created_at, r.block_number,
 		       o1.organization_name as from_org_name, o2.organization_name as to_org_name,
 		       COALESCE(s_org.organization_name, u_org.organization_name, d_s_org.organization_name, ebl_org.organization_name, sc_org.organization_name) as exec_org,
 		       u.full_name as doc_user
-		FROM blockchain_transactions b
-		LEFT JOIN ebl_transfers t ON b.blockchain_tx_id = t.blockchain_tx_id
+		FROM RankedTxs r
+		LEFT JOIN ebl_transfers t ON r.blockchain_tx_id = t.blockchain_tx_id
 		LEFT JOIN organizations o1 ON t.from_org_id = o1.organization_id
 		LEFT JOIN organizations o2 ON t.to_org_id = o2.organization_id
-		LEFT JOIN shipments s ON b.transaction_type = 'CreateShipment' AND b.entity_id = s.shipment_id
+		LEFT JOIN shipments s ON r.transaction_type = 'CreateShipment' AND r.entity_id = s.shipment_id
 		LEFT JOIN organizations s_org ON s.organization_id = s_org.organization_id
-		LEFT JOIN documents d ON b.transaction_type = 'UploadDocument' AND b.entity_id = d.document_id
+		LEFT JOIN documents d ON r.transaction_type = 'UploadDocument' AND r.entity_id = d.document_id
 		LEFT JOIN users u ON d.uploaded_by = u.user_id
 		LEFT JOIN organizations u_org ON u.organization_id = u_org.organization_id
 		LEFT JOIN shipments d_s ON d.shipment_id = d_s.shipment_id
 		LEFT JOIN organizations d_s_org ON d_s.organization_id = d_s_org.organization_id
-		LEFT JOIN ebl_tokens ebl ON b.transaction_type = 'IssueEBLToken' AND b.entity_id = ebl.ebl_token_id
+		LEFT JOIN ebl_tokens ebl ON r.transaction_type = 'IssueEBLToken' AND r.entity_id = ebl.ebl_token_id
 		LEFT JOIN organizations ebl_org ON ebl.current_owner_org_id = ebl_org.organization_id
-		LEFT JOIN containers c ON b.transaction_type = 'CreateContainer' AND b.entity_id = c.container_id
+		LEFT JOIN containers c ON r.transaction_type = 'CreateContainer' AND r.entity_id = c.container_id
 		LEFT JOIN shipments sc ON c.shipment_id = sc.shipment_id
 		LEFT JOIN organizations sc_org ON sc.organization_id = sc_org.organization_id
-		ORDER BY b.created_at DESC LIMIT 50
+		ORDER BY r.created_at DESC LIMIT 50
 	`)
 	if err != nil {
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false})
@@ -1097,8 +1102,9 @@ func handleExplorerTransactions(w http.ResponseWriter, r *http.Request) {
 			bID, tID, cName, ccName, tType, vStatus string
 			createdAt time.Time
 			fromOrg, toOrg, execOrg, docUser *string
+			blockNumber int
 		)
-		if err := rows.Scan(&bID, &tID, &cName, &ccName, &tType, &vStatus, &createdAt, &fromOrg, &toOrg, &execOrg, &docUser); err == nil {
+		if err := rows.Scan(&bID, &tID, &cName, &ccName, &tType, &vStatus, &createdAt, &blockNumber, &fromOrg, &toOrg, &execOrg, &docUser); err == nil {
 			txMap := map[string]interface{}{
 				"blockchain_tx_id":  bID,
 				"tx_id":             tID,
@@ -1107,6 +1113,7 @@ func handleExplorerTransactions(w http.ResponseWriter, r *http.Request) {
 				"function_name":     tType,
 				"validation_status": vStatus,
 				"created_at":        createdAt,
+				"block_number":      blockNumber,
 			}
 			if fromOrg != nil && toOrg != nil {
 				txMap["transfer_flow"] = *fromOrg + " ➡️ " + *toOrg
