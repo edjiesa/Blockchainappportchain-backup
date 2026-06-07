@@ -456,9 +456,32 @@ func handleGetCustomsClearances() (interface{}, interface{}) {
 
 func handleGetAuditLogs() (interface{}, interface{}) {
 	rows, err := db.Query(`
-		SELECT blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status, created_at
-		FROM blockchain_transactions 
-		ORDER BY created_at DESC
+		WITH RankedTxs AS (
+			SELECT b.blockchain_tx_id, b.tx_id, b.channel_name, b.chaincode_name, b.transaction_type, b.validation_status, b.created_at, b.entity_id,
+			       ROW_NUMBER() OVER (ORDER BY b.created_at ASC) as block_number
+			FROM blockchain_transactions b
+		)
+		SELECT r.blockchain_tx_id, r.tx_id, r.channel_name, r.chaincode_name, r.transaction_type, r.validation_status, r.created_at, r.block_number,
+		       o1.organization_name as from_org_name, o2.organization_name as to_org_name,
+		       COALESCE(s_org.organization_name, u_org.organization_name, d_s_org.organization_name, ebl_org.organization_name, sc_org.organization_name) as exec_org,
+		       u.full_name as doc_user
+		FROM RankedTxs r
+		LEFT JOIN ebl_transfers t ON r.blockchain_tx_id = t.blockchain_tx_id
+		LEFT JOIN organizations o1 ON t.from_org_id = o1.organization_id
+		LEFT JOIN organizations o2 ON t.to_org_id = o2.organization_id
+		LEFT JOIN shipments s ON r.transaction_type = 'CreateShipment' AND r.entity_id = s.shipment_id
+		LEFT JOIN organizations s_org ON s.organization_id = s_org.organization_id
+		LEFT JOIN documents d ON r.transaction_type = 'UploadDocument' AND r.entity_id = d.document_id
+		LEFT JOIN users u ON d.uploaded_by = u.user_id
+		LEFT JOIN organizations u_org ON u.organization_id = u_org.organization_id
+		LEFT JOIN shipments d_s ON d.shipment_id = d_s.shipment_id
+		LEFT JOIN organizations d_s_org ON d_s.organization_id = d_s_org.organization_id
+		LEFT JOIN ebl_tokens ebl ON r.transaction_type = 'IssueEBLToken' AND r.entity_id = ebl.ebl_token_id
+		LEFT JOIN organizations ebl_org ON ebl.current_owner_org_id = ebl_org.organization_id
+		LEFT JOIN containers c ON r.transaction_type = 'CreateContainer' AND r.entity_id = c.container_id
+		LEFT JOIN shipments sc ON c.shipment_id = sc.shipment_id
+		LEFT JOIN organizations sc_org ON sc.organization_id = sc_org.organization_id
+		ORDER BY r.created_at DESC
 	`)
 	if err != nil {
 		log.Printf("Query Error: %v", err)
@@ -469,19 +492,36 @@ func handleGetAuditLogs() (interface{}, interface{}) {
 	var logs []map[string]interface{}
 	for rows.Next() {
 		var (
-			bTxID, txID, channel, chaincode, txType, status sql.NullString
+			bTxID, txID, channel, chaincode, txType, status string
 			createdAt                                       time.Time
+			blockNumber                                     int
+			fromOrg, toOrg, execOrg, docUser                *string
 		)
-		if err := rows.Scan(&bTxID, &txID, &channel, &chaincode, &txType, &status, &createdAt); err == nil {
-			logs = append(logs, map[string]interface{}{
-				"blockchain_tx_id": bTxID.String,
-				"tx_id":            txID.String,
-				"channel_name":     channel.String,
-				"chaincode_name":   chaincode.String,
-				"transaction_type": txType.String,
-				"validation_status": status.String,
-				"created_at":       createdAt,
-			})
+		if err := rows.Scan(&bTxID, &txID, &channel, &chaincode, &txType, &status, &createdAt, &blockNumber, &fromOrg, &toOrg, &execOrg, &docUser); err == nil {
+			logMap := map[string]interface{}{
+				"blockchain_tx_id":  bTxID,
+				"tx_id":             txID,
+				"channel_name":      channel,
+				"chaincode_name":    chaincode,
+				"transaction_type":  txType,
+				"validation_status": status,
+				"created_at":        createdAt,
+				"block_number":      blockNumber,
+			}
+			if fromOrg != nil && toOrg != nil {
+				logMap["executor"] = *fromOrg + " ➡️ " + *toOrg
+			} else if txType == "UpdateCustomsStatus" {
+				logMap["executor"] = "Indonesia Customs"
+			} else if execOrg != nil {
+				if docUser != nil {
+					logMap["executor"] = *docUser + " (" + *execOrg + ")"
+				} else {
+					logMap["executor"] = *execOrg
+				}
+			} else {
+				logMap["executor"] = "System"
+			}
+			logs = append(logs, logMap)
 		}
 	}
 	if logs == nil {
