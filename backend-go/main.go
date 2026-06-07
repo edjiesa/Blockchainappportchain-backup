@@ -1021,8 +1021,13 @@ func handleExplorerTransactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	rows, err := db.Query(`
-		SELECT blockchain_tx_id, tx_id, channel_name, chaincode_name, transaction_type, validation_status, created_at
-		FROM blockchain_transactions ORDER BY created_at DESC LIMIT 50
+		SELECT b.blockchain_tx_id, b.tx_id, b.channel_name, b.chaincode_name, b.transaction_type, b.validation_status, b.created_at,
+		       o1.organization_name as from_org_name, o2.organization_name as to_org_name
+		FROM blockchain_transactions b
+		LEFT JOIN ebl_transfers t ON b.blockchain_tx_id = t.blockchain_tx_id
+		LEFT JOIN organizations o1 ON t.from_org_id = o1.organization_id
+		LEFT JOIN organizations o2 ON t.to_org_id = o2.organization_id
+		ORDER BY b.created_at DESC LIMIT 50
 	`)
 	if err != nil {
 		json.NewEncoder(w).Encode(map[string]interface{}{"success": false})
@@ -1035,9 +1040,10 @@ func handleExplorerTransactions(w http.ResponseWriter, r *http.Request) {
 		var (
 			bID, tID, cName, ccName, tType, vStatus string
 			createdAt time.Time
+			fromOrg, toOrg *string
 		)
-		if err := rows.Scan(&bID, &tID, &cName, &ccName, &tType, &vStatus, &createdAt); err == nil {
-			txs = append(txs, map[string]interface{}{
+		if err := rows.Scan(&bID, &tID, &cName, &ccName, &tType, &vStatus, &createdAt, &fromOrg, &toOrg); err == nil {
+			txMap := map[string]interface{}{
 				"blockchain_tx_id":  bID,
 				"tx_id":             tID,
 				"channel_name":      cName,
@@ -1045,7 +1051,11 @@ func handleExplorerTransactions(w http.ResponseWriter, r *http.Request) {
 				"function_name":     tType,
 				"validation_status": vStatus,
 				"created_at":        createdAt,
-			})
+			}
+			if fromOrg != nil && toOrg != nil {
+				txMap["transfer_flow"] = *fromOrg + " ➡️ " + *toOrg
+			}
+			txs = append(txs, txMap)
 		}
 	}
 	if txs == nil {

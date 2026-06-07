@@ -227,7 +227,12 @@ export function BlockchainExplorer() {
                         {tx.chaincode_name || 'unknown'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{tx.function_name || 'unknown'}</td>
+                    <td className="px-6 py-4">
+                      <p className="text-sm font-medium text-gray-900">{tx.function_name || 'unknown'}</p>
+                      {tx.transfer_flow && (
+                        <p className="text-xs text-blue-600 mt-1 font-semibold">{tx.transfer_flow}</p>
+                      )}
+                    </td>
                     <td className="px-6 py-4 font-mono text-sm text-gray-600">{tx.channel_name || 'mychannel'}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
