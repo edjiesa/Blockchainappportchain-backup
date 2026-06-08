@@ -45,7 +45,7 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col relative bg-[url('https://images.unsplash.com/photo-1494412574643-05f45f516d27?q=80&w=2940&auto=format&fit=crop')] bg-cover bg-center">
+    <div className="min-h-screen bg-gray-50 flex flex-col relative bg-[url('/login-bg.jpg')] bg-cover bg-center">
       <div className="absolute inset-0 bg-blue-900/80 backdrop-blur-sm z-0"></div>
       
       <div className="flex-1 flex flex-col justify-center py-12 sm:px-6 lg:px-8 z-10">
