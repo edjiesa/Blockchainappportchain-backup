@@ -69,6 +69,7 @@ Blockchainappportchain/
 │   │   ├── App.tsx             ← RouterProvider + Error Boundary
 │   │   ├── routes.tsx          ← React Router tree (ProtectedRoute)
 │   │   ├── components/         ← Komponen halaman (Root.tsx = Sidebar Premium Layout)
+│   │   │   ├── PublicTracking.tsx ← Dasbor Publik Pelacakan e-BL tanpa login
 │   │   └── context/
 │   │       └── AuthContext.tsx ← RBAC & Login state management
 │   └── styles/

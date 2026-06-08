@@ -110,3 +110,7 @@ Berikut adalah daftar lengkap seluruh fungsi pintar (Smart Contract) yang telah 
 
 ---
 *File ini merepresentasikan cakupan logika bisnis lengkap pada `portchain-contract.js` di dalam arsitektur PortChain.*
+
+## 🌐 Ekstensi Sistem (Off-Chain Query)
+Selain 73 fungsi *On-Chain* di atas, ekosistem PortChain juga memiliki metode khusus di *middleware* (Go JSON-RPC) untuk kebutuhan akses data publik dengan performa tinggi:
+- **`TrackShipment`**: Melakukan agregasi data riwayat pengiriman, status bea cukai, pencetakan token, dan transfer e-BL dari PostgreSQL untuk disajikan secara instan di Public Tracking Dashboard tanpa membebani *node* Fabric.
