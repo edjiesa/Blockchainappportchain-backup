@@ -121,6 +121,7 @@ docker compose up -d --build backend
 | Chaincode Deployed | ✅ | Smart Contract aktif di `port-channel` |
 | UI/UX Redesign | ✅ | Sidebar premium layout selesai |
 | Real data integration | ✅ | Terhubung dari UI -> Go -> Node.js -> Fabric |
+| Public Tracking Dashboard | ✅ | Portal pelacakan e-BL live di `/track` tanpa login |
 
 ---
 

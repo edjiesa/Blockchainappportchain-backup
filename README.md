@@ -107,6 +107,7 @@ portchain-db     Up X minutes (healthy)    0.0.0.0:5432->5432
 | URL | Keterangan |
 |-----|-----------|
 | 🌐 **[http://localhost:5173](http://localhost:5173)** | Aplikasi Frontend Utama (PortChain Dashboard) |
+| 🔍 **[http://localhost:5173/track](http://localhost:5173/track)** | Public Tracking Dashboard (Untuk Eksportir/Importir) |
 | 👁️ **[http://localhost:8001](http://localhost:8001)** | **Fabric Live Monitor (Real-time Transaction Dashboard)** |
 | 🔗 **[http://localhost:3001/api/status](http://localhost:3001/api/status)** | Status Koneksi Backend / Fabric Connector |
 | ⛓️ **[http://localhost:8080/ak/api/v1/components](http://localhost:8080/ak/api/v1/components)** | Microfab API Explorer (Core Node) |
@@ -318,6 +319,7 @@ Aplikasi menjalankan node Fabric lokal bernama `microfab`. Anda dapat berinterak
 | Halaman | Fitur |
 |---------|-------|
 | **Dashboard** | Statistik real-time, grafik tren, status Fabric |
+| **Public Tracking** | Lacak status Shipment & e-BL tanpa perlu login akun |
 | **Shipments** | Daftar & manajemen pengiriman, filter & pencarian |
 | **Customs** | Proses bea cukai PIB, approval workflow |
 | **Documents** | Bill of Lading, Invoice, Packing List |
