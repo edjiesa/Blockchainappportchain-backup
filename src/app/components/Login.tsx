@@ -173,6 +173,7 @@ export function Login() {
           </div>
         </div>
       </div>
+      </div>
 
       <footer className="w-full py-6 z-10 border-t border-white/10 bg-black/30 backdrop-blur-md shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
         <div className="text-center text-white">
