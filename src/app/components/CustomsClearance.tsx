@@ -347,7 +347,9 @@ export function CustomsClearance() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Shipment</label>
                   <select name="shipment_id" required className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-blue-600">
                     <option value="">-- Pilih Shipment --</option>
-                    {shipments.map(s => (
+                    {shipments
+                      .filter(s => !customsClearances.some(c => c.shipment_id === s.shipment_id))
+                      .map(s => (
                       <option key={s.shipment_id} value={s.shipment_id}>
                         {s.shipment_code} - {s.goods_description} ({s.origin_port} &rarr; {s.destination_port})
                       </option>
