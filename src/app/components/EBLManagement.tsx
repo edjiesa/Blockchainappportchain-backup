@@ -11,6 +11,7 @@ export function EBLManagement() {
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [documents, setDocuments] = useState<any[]>([]);
   const [shipments, setShipments] = useState<any[]>([]);
+  const [customsClearances, setCustomsClearances] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewingDoc, setViewingDoc] = useState<any>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -21,13 +22,15 @@ export function EBLManagement() {
       const p2 = fetch(`${API_URL}/rpc`, { method: 'POST', body: JSON.stringify({ jsonrpc: '2.0', method: 'GetOrganizations', id: 2 }) }).then(r => r.json());
       const p3 = fetch(`${API_URL}/rpc`, { method: 'POST', body: JSON.stringify({ jsonrpc: '2.0', method: 'GetDocuments', id: 3 }) }).then(r => r.json());
       const p4 = fetch(`${API_URL}/rpc`, { method: 'POST', body: JSON.stringify({ jsonrpc: '2.0', method: 'GetAllShipments', id: 4 }) }).then(r => r.json());
+      const p5 = fetch(`${API_URL}/rpc`, { method: 'POST', body: JSON.stringify({ jsonrpc: '2.0', method: 'GetCustomsClearances', id: 5 }) }).then(r => r.json());
 
-      const [resTokens, resOrgs, resDocs, resShips] = await Promise.all([p1, p2, p3, p4]);
+      const [resTokens, resOrgs, resDocs, resShips, resCustoms] = await Promise.all([p1, p2, p3, p4, p5]);
 
       if (resTokens.result) setTokens(resTokens.result);
       if (resOrgs.result) setOrganizations(resOrgs.result);
       if (resDocs.result) setDocuments(resDocs.result);
       if (resShips.result) setShipments(resShips.result);
+      if (resCustoms.result) setCustomsClearances(resCustoms.result);
     } catch (err) {
       console.error("Fetch data failed:", err);
     } finally {
@@ -262,6 +265,13 @@ export function EBLManagement() {
                   </button>
                   <button
                     onClick={() => {
+                      if (shipment) {
+                        const hasPIB = customsClearances.some(c => c.shipment_id === shipment.shipment_id);
+                        if (!hasPIB) {
+                          alert("Belum dapat diproses, isi Pemberitahuan impor barang (PIB) nya dahulu di menu customs");
+                          return;
+                        }
+                      }
                       setSelectedEBL(ebl.token_number);
                       setShowTransferDialog(true);
                     }}
